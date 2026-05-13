@@ -1,0 +1,56 @@
+{
+    "$schema": "http://json.schemastore.org/template",
+    "author": "The GS2ML Developers",
+    "identity": "gs2mlModTemplate",
+    "name": "GS2ML Mod Template",
+    "classifications": [],
+    "sourceName": "GS2ML_MOD_NAME",
+    "shortName": "gs2ml",
+    "symbols": {
+        "easymode": {
+            "type":"parameter",
+            "defaultValue": "false",
+            "datatype": "bool",
+            "description": "Enables \"Easy mode\", which provides a base for loading things from files."
+        }
+    },
+    "sources": [
+        {
+            "include": [
+                "**/*"
+            ],
+            "exclude": [
+                "**/[Bb]in/**",
+                "**/[Oo]bj/**",
+                ".template.config/**/*",
+                "**/*.filelist",
+                "**/*.user",
+                "**/*.lock.json",
+                "**/assets/**"
+            ]
+        },
+        {
+            "include": [
+                "**/assets/**"
+            ],
+            "condition": "easymode"
+        }
+    ],
+    "SpecialCustomOperations": {
+        "**/*.csproj": {
+          "operations": [
+            {
+              "type": "conditional",
+              "configuration": {
+                "actionableIf": [ "<!--#if" ],
+                "actionableElse": [ "#else", "<!--#else" ],
+                "actionableElseif": [ "#elseif", "<!--#elseif" ],
+                "endif": [ "#endif", "<!--#endif" ],
+                "trim" : "true",
+                "wholeLine": "true"
+              }
+            }
+          ]
+        }
+        }
+}
