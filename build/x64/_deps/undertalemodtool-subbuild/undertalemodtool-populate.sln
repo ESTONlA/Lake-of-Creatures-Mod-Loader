@@ -1,0 +1,47 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CMakePredefinedTargets", "CMakePredefinedTargets", "{1B19B3E6-7BB4-32AA-A218-3388BBF9E53C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ExternalProjectTargets", "ExternalProjectTargets", "{A1514301-18E5-3F41-A03A-D36F7C0570A2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "undertalemodtool-populate", "ExternalProjectTargets\undertalemodtool-populate", "{E6483C06-F54D-3C17-B8D4-ACAD473723B5}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ALL_BUILD", "ALL_BUILD.vcxproj", "{F8F69E9A-58CE-388F-BE68-23E2FD5D4EE3}"
+	ProjectSection(ProjectDependencies) = postProject
+		{42020A37-C1A0-37B7-9F40-65FB3B72BEF1} = {42020A37-C1A0-37B7-9F40-65FB3B72BEF1}
+		{F8515FF6-31BA-372B-A90D-325C9B4BD36E} = {F8515FF6-31BA-372B-A90D-325C9B4BD36E}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ZERO_CHECK", "ZERO_CHECK.vcxproj", "{42020A37-C1A0-37B7-9F40-65FB3B72BEF1}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "undertalemodtool-populate", "undertalemodtool-populate.vcxproj", "{F8515FF6-31BA-372B-A90D-325C9B4BD36E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{42020A37-C1A0-37B7-9F40-65FB3B72BEF1} = {42020A37-C1A0-37B7-9F40-65FB3B72BEF1}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F8F69E9A-58CE-388F-BE68-23E2FD5D4EE3}.Debug|x64.ActiveCfg = Debug|x64
+		{42020A37-C1A0-37B7-9F40-65FB3B72BEF1}.Debug|x64.ActiveCfg = Debug|x64
+		{42020A37-C1A0-37B7-9F40-65FB3B72BEF1}.Debug|x64.Build.0 = Debug|x64
+		{F8515FF6-31BA-372B-A90D-325C9B4BD36E}.Debug|x64.ActiveCfg = Debug|x64
+		{F8515FF6-31BA-372B-A90D-325C9B4BD36E}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F8F69E9A-58CE-388F-BE68-23E2FD5D4EE3} = {1B19B3E6-7BB4-32AA-A218-3388BBF9E53C}
+		{42020A37-C1A0-37B7-9F40-65FB3B72BEF1} = {1B19B3E6-7BB4-32AA-A218-3388BBF9E53C}
+		{E6483C06-F54D-3C17-B8D4-ACAD473723B5} = {A1514301-18E5-3F41-A03A-D36F7C0570A2}
+		{F8515FF6-31BA-372B-A90D-325C9B4BD36E} = {E6483C06-F54D-3C17-B8D4-ACAD473723B5}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {603C8204-2644-35F0-8D2F-3979087A34C3}
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

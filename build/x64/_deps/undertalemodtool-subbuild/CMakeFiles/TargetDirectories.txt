@@ -1,0 +1,3 @@
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/CMakeFiles/undertalemodtool-populate.dir
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/CMakeFiles/ALL_BUILD.dir
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/CMakeFiles/ZERO_CHECK.dir

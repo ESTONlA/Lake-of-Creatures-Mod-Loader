@@ -2,6 +2,12 @@
 
 LOCLM is the Lake of Creatures mod loader. It injects through `version.dll`, rewrites the game's `data.win` with loaded mods, and then relaunches the game against the generated `LOCLM_CACHE_data.win`.
 
+## Links
+
+- Steam store page: https://store.steampowered.com/app/1808320/Lake_of_Creatures/
+- Steam community page: https://steamcommunity.com/app/1808320
+- Discord: https://discord.com/invite/kQdXU3r2Dn
+
 ## Repository Layout
 
 ```text
@@ -36,6 +42,8 @@ out/bin/
 ```
 
 To install the loader into a game folder, copy `out/bin/version.dll` and the `out/bin/loclm/` directory next to the game's executable and `data.win`.
+
+Important: the current game build is `x64`, so `version.dll` must also be the `x64` build.
 
 ## Mod Template
 

@@ -1,0 +1,150 @@
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\224CA55C918EE901EB5F807B0EEE7575\UNDERTALEMODTOOL-POPULATE-MKDIR.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/tmp/undertalemodtool-populate-mkdirs.cmake
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/src/undertalemodtool-populate-stamp/Debug/undertalemodtool-populate-mkdir
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\224CA55C918EE901EB5F807B0EEE7575\UNDERTALEMODTOOL-POPULATE-DOWNLOAD.RULE
+setlocal
+cd C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\x64\_deps
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/tmp/undertalemodtool-populate-gitclone.cmake
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/src/undertalemodtool-populate-stamp/Debug/undertalemodtool-populate-download
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\224CA55C918EE901EB5F807B0EEE7575\UNDERTALEMODTOOL-POPULATE-UPDATE.RULE
+setlocal
+cd C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\x64\_deps\undertalemodtool-src
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/tmp/undertalemodtool-populate-gitupdate.cmake
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\224CA55C918EE901EB5F807B0EEE7575\UNDERTALEMODTOOL-POPULATE-PATCH.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/src/undertalemodtool-populate-stamp/Debug/undertalemodtool-populate-patch
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\224CA55C918EE901EB5F807B0EEE7575\UNDERTALEMODTOOL-POPULATE-CONFIGURE.RULE
+setlocal
+cd C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\x64\_deps\undertalemodtool-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/src/undertalemodtool-populate-stamp/Debug/undertalemodtool-populate-configure
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\224CA55C918EE901EB5F807B0EEE7575\UNDERTALEMODTOOL-POPULATE-BUILD.RULE
+setlocal
+cd C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\x64\_deps\undertalemodtool-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/src/undertalemodtool-populate-stamp/Debug/undertalemodtool-populate-build
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\224CA55C918EE901EB5F807B0EEE7575\UNDERTALEMODTOOL-POPULATE-INSTALL.RULE
+setlocal
+cd C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\x64\_deps\undertalemodtool-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/src/undertalemodtool-populate-stamp/Debug/undertalemodtool-populate-install
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\224CA55C918EE901EB5F807B0EEE7575\UNDERTALEMODTOOL-POPULATE-TEST.RULE
+setlocal
+cd C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\x64\_deps\undertalemodtool-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/src/undertalemodtool-populate-stamp/Debug/undertalemodtool-populate-test
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\C7BF6432BDFB2A9F064BA876C82FCBE7\UNDERTALEMODTOOL-POPULATE-COMPLETE.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/CMakeFiles/Debug
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/CMakeFiles/Debug/undertalemodtool-populate-complete
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/undertalemodtool-populate-prefix/src/undertalemodtool-populate-stamp/Debug/undertalemodtool-populate-done
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\B7BBF48A587364C4C783BFD0C6CCD5EA\UNDERTALEMODTOOL-POPULATE.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\X64\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild -BC:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild --check-stamp-file C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/x64/_deps/undertalemodtool-subbuild/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

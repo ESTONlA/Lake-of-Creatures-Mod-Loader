@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("loclm-csharp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+38f082ad64032c97c9168261c4ba833ef8fa4a20")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+20a09a37f9f4392178de933f95cf99f4b98fd5cd")]
 [assembly: System.Reflection.AssemblyProductAttribute("loclm-csharp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("loclm-csharp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

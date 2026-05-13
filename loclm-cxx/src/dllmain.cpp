@@ -39,21 +39,39 @@ std::filesystem::path getSystemDirectory() {
 bool hasLoaded = false;
 bool hasGameArg = false;
 
+std::filesystem::path getProcessDirectory() {
+    wchar_t buffer[MAX_PATH];
+    GetModuleFileName(NULL, buffer, sizeof(buffer));
+    return std::filesystem::path(buffer).parent_path();
+}
+
+void logLine(const std::string& message) {
+    std::ofstream logFile(getProcessDirectory() / "LOCLM_proxy.log", std::ios::app);
+    if (logFile) {
+        logFile << message << std::endl;
+    }
+}
 
 bool loadProxy() {
+    logLine("loadProxy: start");
     const auto libPath = getSystemDirectory() / PROXY_DLL;
     const auto lib = LoadLibrary(libPath.c_str());
-    if(!lib) return false;
+    if(!lib) {
+        logLine("loadProxy: failed to load system version.dll");
+        return false;
+    }
 
     #define DLL_NAME(name) DLL_PROXY_ORIGINAL(name) = GetProcAddress(lib, ###name);
     #include "proxy.h"
     DLL_NAME(GetFileVersionInfoSizeA)
     #undef DLL_NAME
 
+    logLine("loadProxy: success");
     return true;
 }
 
 void loadMods() {
+    logLine("loadMods: start");
     // Check if the game is being launched with the -game argument.
     if (hasGameArg || hasLoaded) return;
     hasLoaded = true;
@@ -121,10 +139,12 @@ void loadMods() {
     error = CreateProcess(csExePath.c_str(), lpCommandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
     if(0 == error)
     {
+        logLine("loadMods: CreateProcess failed");
         std::cout << "ERROR: " << GetLastError() << std::endl;
     }
     else
     {
+        logLine("loadMods: CreateProcess succeeded");
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
     }
@@ -146,9 +166,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     if (ul_reason_for_call != DLL_PROCESS_ATTACH)
         return TRUE;
 
+    logLine("DllMain: process attach");
     AllocConsole();
     freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
     if (!loadProxy()) {
+        logLine("DllMain: loadProxy failed");
         return FALSE;
     }
 
@@ -163,10 +185,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             hasGameArg = true;
     }
     if (!hasGameArg) {
+        logLine("DllMain: creating loader thread");
         HANDLE thisThread = OpenThread(THREAD_ALL_ACCESS, FALSE, GetCurrentThreadId());
         HANDLE loaderThread = CreateThread(NULL, 0, ThreadProc, thisThread, 0, NULL);
         if (loaderThread == 0) 
+        {
+            logLine("DllMain: CreateThread failed");
             return FALSE;
+        }
     }
 
     return TRUE;

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\current\CMakeFiles\23cf189bd739506e3c4be0c109c7e847\loclm-csharp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\loclm-csharp\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\current\loclm-csharp\CMakeFiles\loclm-csharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{CEE048CE-C397-33CB-846E-F513FF158908}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

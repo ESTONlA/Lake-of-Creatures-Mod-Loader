@@ -1,0 +1,14 @@
+# Target labels
+ undertalemodtool-populate
+# Source files and their labels
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/undertalemodtool-populate
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/a4ae7b12c033c27d3986368099de2f26/undertalemodtool-populate.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/214ed7c2f15fbd4e732aa3e1c00fad41/undertalemodtool-populate-complete.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/6e13fc93b9dfea2e0c7148dd325c04a0/undertalemodtool-populate-build.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/6e13fc93b9dfea2e0c7148dd325c04a0/undertalemodtool-populate-configure.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/6e13fc93b9dfea2e0c7148dd325c04a0/undertalemodtool-populate-download.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/6e13fc93b9dfea2e0c7148dd325c04a0/undertalemodtool-populate-install.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/6e13fc93b9dfea2e0c7148dd325c04a0/undertalemodtool-populate-mkdir.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/6e13fc93b9dfea2e0c7148dd325c04a0/undertalemodtool-populate-patch.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/6e13fc93b9dfea2e0c7148dd325c04a0/undertalemodtool-populate-test.rule
+C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/_deps/undertalemodtool-subbuild/CMakeFiles/6e13fc93b9dfea2e0c7148dd325c04a0/undertalemodtool-populate-update.rule

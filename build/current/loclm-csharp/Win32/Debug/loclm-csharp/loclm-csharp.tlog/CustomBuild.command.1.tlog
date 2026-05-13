@@ -1,0 +1,36 @@
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\CURRENT\CMAKEFILES\23CF189BD739506E3C4BE0C109C7E847\LOCLM-CSHARP.RULE
+setlocal
+cd C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\loclm-csharp
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+dotnet build
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0 C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\LOCLM-CSHARP\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader -BC:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current --check-stamp-file C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/loclm-csharp/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

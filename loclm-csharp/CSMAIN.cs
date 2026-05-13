@@ -163,6 +163,8 @@ class LOCLM
             }
         }
 
+        InstallLoaderAboutButton(data);
+
         if(hasErrored){
             Console.Write(
 @"
@@ -203,6 +205,147 @@ Continue? (y to continue, anything else to exit.)
             argstring += "\"";
         }
         Process.Start(gameExecutable, $"-game \"{outputDataWinPath}\"" + argstring);
+    }
+
+    private static void InstallLoaderAboutButton(UndertaleData data)
+    {
+        UndertaleModLib.Compiler.CodeImportGroup importGroup = new(data);
+
+        importGroup.QueueReplace(
+            "gml_GlobalScript_main_menu_spawn_buttons",
+            @"function main_menu_spawn_buttons()
+{
+    btn_yy = 4;
+    global.button_unlock[90] = 1;
+    global.button_unlock[91] = 1;
+    if (global.start_tutorial_completion == 0)
+    {
+        var button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 5 + btn_yy, -999, obj_button_menu);
+        button.button_index = 52;
+        button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 25 + btn_yy, -999, obj_button_menu);
+        button.button_index = 2;
+        button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 45 + btn_yy, -999, obj_button_menu);
+        button.button_index = 44;
+        button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 65 + btn_yy, -999, obj_button_menu);
+        button.button_index = 3;
+    }
+    else
+    {
+        var button = instance_create_depth(room_width / 2, (((room_height / 2) + 15) - 15) + btn_yy, -999, obj_button_menu);
+        button.button_index = 1;
+        button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 5 + btn_yy, -999, obj_button_menu);
+        button.button_index = 53;
+        button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 25 + btn_yy, -999, obj_button_menu);
+        button.button_index = 19;
+        button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 45 + btn_yy, -999, obj_button_menu);
+        button.button_index = 2;
+        button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 65 + btn_yy, -999, obj_button_menu);
+        button.button_index = 44;
+        button = instance_create_depth(room_width / 2, (room_height / 2) + 15 + 85 + btn_yy, -999, obj_button_menu);
+        button.button_index = 3;
+    }
+    var aboutButton = instance_create_depth((room_width / 2) - 165, (room_height / 2) + 15 + 5 + btn_yy, -999, obj_button_menu);
+    aboutButton.button_index = 90;
+}");
+
+        importGroup.QueueTrimmedLinesFindReplace(
+            data.Code.ByName("gml_Object_obj_button_menu_Alarm_0"),
+            @"    case 67:
+        my_text = txt(""unlock_dlc"");
+        fadeout_dir = 0;
+        break;
+}",
+            @"    case 67:
+        my_text = txt(""unlock_dlc"");
+        fadeout_dir = 0;
+        break;
+    case 90:
+        my_text = ""LOCLM"";
+        fadeout_dir = 1;
+        break;
+    case 91:
+        my_text = ""Back"";
+        fadeout_dir = 1;
+        break;
+}");
+
+        importGroup.QueueTrimmedLinesFindReplace(
+            data.Code.ByName("gml_Object_obj_button_menu_Alarm_2"),
+            @"        case 67:
+            url_open(""https://store.steampowered.com/app/4575790"");
+            break;
+    }",
+            @"        case 67:
+            url_open(""https://store.steampowered.com/app/4575790"");
+            break;
+        case 90:
+            global.current_menu = 90;
+            global.cursor_index_menu = 0;
+            with (obj_button_menu)
+            {
+                if (option_menu_tab_button == false)
+                {
+                    instance_destroy();
+                }
+            }
+            var aboutBackButton = instance_create_depth(78, 34, -999, obj_button_menu);
+            aboutBackButton.button_index = 91;
+            break;
+        case 91:
+            global.current_menu = 3;
+            global.cursor_index_menu = 0;
+            with (obj_button_menu)
+            {
+                if (option_menu_tab_button == false)
+                {
+                    instance_destroy();
+                }
+            }
+            main_menu_spawn_buttons();
+            break;
+    }");
+
+        importGroup.QueueAppend(
+            data.Code.ByName("gml_Object_obj_ctrl_main_menu_Draw_0"),
+            @"
+if (global.current_menu == 90)
+{
+    draw_set_font(global.font_current);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+    draw_set_alpha(1);
+    draw_set_color(global.color_yellow);
+    draw_text(28, 28, ""LOCLM"");
+    draw_set_color(c_white);
+    draw_text(28, 48, ""Created and maintained by Estonia.\nMade by the community, for the community.\nBuilt to stay out of the game's way."");
+}");
+
+        importGroup.QueueAppend(
+            data.Code.ByName("gml_Object_obj_ctrl_main_menu_Step_0"),
+            @"
+if (global.current_menu == 90)
+{
+    overlay_darkness_alpha += ((0.8 - overlay_darkness_alpha) * 0.1);
+    global.current_darkness += ((0.2 - global.current_darkness) * 0.1);
+    logo_yy += ((-70 - logo_yy) * 0.1);
+    logo_alpha += ((0 - logo_alpha) * 0.2);
+    if (input_check_pressed(""leave""))
+    {
+        global.current_menu = 3;
+        global.cursor_index_menu = 0;
+        with (obj_button_menu)
+        {
+            if (option_menu_tab_button == false)
+            {
+                instance_destroy();
+            }
+        }
+        main_menu_spawn_buttons();
+    }
+}");
+
+        importGroup.Import();
+        Console.WriteLine("Installed LOCLM about button and info panel.");
     }
 }
 
