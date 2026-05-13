@@ -1,8 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 
-using GMHooker;
-
+using UndertaleModLib.Compiler;
 using UndertaleModLib;
 using UndertaleModLib.Models;
 
@@ -184,29 +183,69 @@ internal sealed class ModContext
     public void HookFunctionFromFile(string relativePath, string function)
     {
         string normalized = NormalizeAssetPath(relativePath);
-        Data.HookFunction(function, RequireCodeAsset(normalized));
-        Log($"Hooked function '{function}' from '{normalized}'.");
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace($"gml_Script_{function}", RequireCodeAsset(normalized));
+        importGroup.Import();
+        Log($"Replaced function '{function}' from '{normalized}'.");
+    }
+
+    public void AppendCodeFromFile(string relativePath, string codeName)
+    {
+        string normalized = NormalizeAssetPath(relativePath);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueAppend(RequireCodeEntry(codeName), RequireCodeAsset(normalized));
+        importGroup.Import();
+        Log($"Appended code asset '{normalized}' to '{codeName}'.");
+    }
+
+    public void AppendCodeFromFile(string relativePath, string codeName, params (string token, string value)[] replacements)
+    {
+        string normalized = NormalizeAssetPath(relativePath);
+        string code = RequireCodeAsset(normalized);
+        foreach ((string token, string value) in replacements)
+        {
+            code = code.Replace(token, value);
+        }
+
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueAppend(RequireCodeEntry(codeName), code);
+        importGroup.Import();
+        Log($"Appended code asset '{normalized}' to '{codeName}'.");
+    }
+
+    public void FindReplaceCode(string codeName, string search, string replacement)
+    {
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueFindReplace(RequireCodeEntry(codeName), search, replacement);
+        importGroup.Import();
+        Log($"Patched code entry '{codeName}'.");
     }
 
     public void CreateFunctionFromFile(string relativePath, string function, ushort argumentCount = 0)
     {
         string normalized = NormalizeAssetPath(relativePath);
-        Data.CreateFunction(function, RequireCodeAsset(normalized), argumentCount);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace($"gml_Script_{function}", RequireCodeAsset(normalized));
+        importGroup.Import();
         Log($"Created function '{function}' from '{normalized}'.");
     }
 
     public void HookCodeFromFile(string relativePath, string codeName)
     {
         string normalized = NormalizeAssetPath(relativePath);
-        Data.HookCode(codeName, RequireCodeAsset(normalized));
-        Log($"Hooked code entry '{codeName}' from '{normalized}'.");
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace(RequireCodeEntry(codeName), RequireCodeAsset(normalized));
+        importGroup.Import();
+        Log($"Replaced code entry '{codeName}' from '{normalized}'.");
     }
 
     public void ReplaceObjectEventFromFile(string relativePath, string objName, EventType eventType)
     {
         string code = RequireCodeAsset(relativePath);
         UndertaleGameObject obj = RequireObject(objName);
-        obj.EventHandlerFor(eventType, Data.Strings, Data.Code, Data.CodeLocals).ReplaceGmlSafe(code, Data);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace(obj.EventHandlerFor(eventType, Data), code);
+        importGroup.Import();
         Log($"Replaced {objName}:{eventType} from '{NormalizeAssetPath(relativePath)}'.");
     }
 
@@ -214,7 +253,9 @@ internal sealed class ModContext
     {
         string code = RequireCodeAsset(relativePath);
         UndertaleGameObject obj = RequireObject(objName);
-        obj.EventHandlerFor(eventType, eventSubtype, Data.Strings, Data.Code, Data.CodeLocals).ReplaceGmlSafe(code, Data);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace(obj.EventHandlerFor(eventType, eventSubtype, Data), code);
+        importGroup.Import();
         Log($"Replaced {objName}:{eventType}/{eventSubtype} from '{NormalizeAssetPath(relativePath)}'.");
     }
 
@@ -222,7 +263,9 @@ internal sealed class ModContext
     {
         string code = RequireCodeAsset(relativePath);
         UndertaleGameObject obj = RequireObject(objName);
-        obj.EventHandlerFor(eventType, eventSubtype, Data.Strings, Data.Code, Data.CodeLocals).ReplaceGmlSafe(code, Data);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace(obj.EventHandlerFor(eventType, eventSubtype, Data), code);
+        importGroup.Import();
         Log($"Replaced {objName}:{eventType}/{eventSubtype} from '{NormalizeAssetPath(relativePath)}'.");
     }
 
@@ -230,7 +273,9 @@ internal sealed class ModContext
     {
         string code = RequireCodeAsset(relativePath);
         UndertaleGameObject obj = RequireObject(objName);
-        obj.EventHandlerFor(eventType, eventSubtype, Data.Strings, Data.Code, Data.CodeLocals).ReplaceGmlSafe(code, Data);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace(obj.EventHandlerFor(eventType, eventSubtype, Data), code);
+        importGroup.Import();
         Log($"Replaced {objName}:{eventType}/{eventSubtype} from '{NormalizeAssetPath(relativePath)}'.");
     }
 
@@ -238,7 +283,9 @@ internal sealed class ModContext
     {
         string code = RequireCodeAsset(relativePath);
         UndertaleGameObject obj = RequireObject(objName);
-        obj.EventHandlerFor(eventType, eventSubtype, Data.Strings, Data.Code, Data.CodeLocals).ReplaceGmlSafe(code, Data);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace(obj.EventHandlerFor(eventType, eventSubtype, Data), code);
+        importGroup.Import();
         Log($"Replaced {objName}:{eventType}/{eventSubtype} from '{NormalizeAssetPath(relativePath)}'.");
     }
 
@@ -246,7 +293,9 @@ internal sealed class ModContext
     {
         string code = RequireCodeAsset(relativePath);
         UndertaleGameObject obj = RequireObject(objName);
-        obj.EventHandlerFor(eventType, eventSubtype, Data.Strings, Data.Code, Data.CodeLocals).ReplaceGmlSafe(code, Data);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace(obj.EventHandlerFor(eventType, eventSubtype, Data), code);
+        importGroup.Import();
         Log($"Replaced {objName}:{eventType}/{eventSubtype} from '{NormalizeAssetPath(relativePath)}'.");
     }
 
@@ -254,7 +303,9 @@ internal sealed class ModContext
     {
         string code = RequireCodeAsset(relativePath);
         UndertaleGameObject obj = RequireObject(objName);
-        obj.EventHandlerFor(eventType, eventSubtype, Data.Strings, Data.Code, Data.CodeLocals).ReplaceGmlSafe(code, Data);
+        CodeImportGroup importGroup = new(Data);
+        importGroup.QueueReplace(obj.EventHandlerFor(eventType, eventSubtype, Data), code);
+        importGroup.Import();
         Log($"Replaced {objName}:{eventType}/{eventSubtype} from '{NormalizeAssetPath(relativePath)}'.");
     }
 

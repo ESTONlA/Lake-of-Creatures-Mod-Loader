@@ -1,11 +1,11 @@
-# CreatureProbe
+# Test Mod - Estonia
 
-This project is scaffolded for LOCLM and starts with a small runtime helper layer instead of a single giant file.
+This template ships with a working sample that adds a main-menu button and opens a custom tab called `Test Mod - Estonia`.
 
 ## Files That Matter
 
-- `CreatureProbe.cs`: main entry point with `BuildScene` and `ApplyHooks`
-- `ModContext.cs`: asset loading, logging, hook helpers, object helpers
+- `loclmMod.cs`: main entry point with `InstallMainMenuTab`
+- `ModContext.cs`: asset loading, logging, and hook helpers
 - `ModConfig.cs`: optional JSON config model
 - `IncludedFiles/modinfo.json`: manifest copied beside your built DLL
 - `assets/code/`: recursive GML hook/function assets
@@ -14,14 +14,19 @@ This project is scaffolded for LOCLM and starts with a small runtime helper laye
 ## First Pass
 
 1. Update `IncludedFiles/modinfo.json`.
-2. Put your actual patch logic into `BuildScene` and `ApplyHooks`.
-3. If you installed the template with `-e`, set `TargetFunction` and `EnableExampleHook` in `assets/data/mod-config.json`.
+2. Put your actual patch logic into `InstallMainMenuTab` or split it into your own helpers.
+3. If you installed the template with `-e`, tweak `mainMenuButtonLabel`, `menuTabTitle`, `menuTabBody`, `mainMenuButtonIndex`, and `backButtonIndex` in `assets/data/mod-config.json`.
 4. Build with `dotnet build`.
 
 ## Asset Paths
 
 Code assets are loaded recursively and referenced by relative path. Example:
 
-```csharp
-context.HookFunctionFromFile("hooks/example_hook.gml", "scr_real_target");
-```
+The sample hook files under `assets/code/hooks/` show how to append into real menu code, including:
+
+- `main_menu_spawn_buttons.gml`
+- `obj_button_menu_Alarm_0.gml`
+- `obj_button_menu_Alarm_2.gml`
+- `obj_ctrl_main_menu_Draw_0.gml`
+- `obj_ctrl_main_menu_Step_0.gml`
+- `obj_ctrl_main_menu_Alarm_2.gml`

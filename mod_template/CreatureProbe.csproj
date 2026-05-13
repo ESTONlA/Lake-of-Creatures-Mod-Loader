@@ -8,10 +8,11 @@
     <OutputPath>CreatureProbe\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="UndertaleModLib, Culture=neutral, PublicKeyToken=null">
-      <HintPath>.\UndertaleModLib.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
+    <ProjectReference Include="..\undertalemodtool-src\UndertaleModLib\UndertaleModLib.csproj" />
+    <ProjectReference Include="..\undertalemodtool-src\Underanalyzer\Underanalyzer\Underanalyzer.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="hooker\src\**\*.cs" />
   </ItemGroup>
   <Target Name="CopyAssets" AfterTargets="AfterBuild">
     <ItemGroup>

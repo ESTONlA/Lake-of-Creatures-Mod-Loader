@@ -1,5 +1,6 @@
 {
   "verboseLogging": true,
-  "enableExampleHook": false,
-  "targetFunction": "scr_replace_me"
+  "enableMenuTab": true,
+  "mainMenuButtonIndex": 68,
+  "backButtonIndex": 69
 }

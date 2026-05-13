@@ -1,6 +1,6 @@
 {
-	"modName":"CreatureProbe",
+	"modName":"Test Mod - Estonia",
 	"authors":["Unknown Modder"],
-	"description":"A LOCLM mod built from the scaffold template.",
+	"description":"A LOCLM sample mod that adds a custom main menu tab.",
 	"priority":100
 }
