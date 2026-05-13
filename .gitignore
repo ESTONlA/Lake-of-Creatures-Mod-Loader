@@ -1,0 +1,32 @@
+# Build output
+build/
+out/
+
+# Temporary test/game copies
+.codex_proxy_test/
+.codex_tmp_template_test/
+.template-hive/
+
+# Template and package artifacts
+mod_template.zip
+*.zip
+
+# Managed/native build artifacts
+*.pdb
+*.log
+*.tmp
+*.cache
+*.ilk
+*.exp
+*.lib
+*.obj
+*.user
+*.suo
+*.nupkg
+
+# .NET build folders
+**/bin/
+**/obj/
+
+# Editor / IDE state
+.vs/

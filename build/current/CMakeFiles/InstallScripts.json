@@ -1,9 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/cmake_install.cmake",
-		"C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/loclm-cxx/cmake_install.cmake",
-		"C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/loclm-csharp/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

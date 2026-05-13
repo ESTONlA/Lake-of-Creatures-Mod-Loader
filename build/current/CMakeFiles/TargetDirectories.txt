@@ -1,4 +1,0 @@
-C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/CMakeFiles/ALL_BUILD.dir
-C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/CMakeFiles/ZERO_CHECK.dir
-C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/loclm-cxx/CMakeFiles/loclm-cxx.dir
-C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/current/loclm-csharp/CMakeFiles/loclm-csharp.dir
