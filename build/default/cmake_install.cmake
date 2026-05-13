@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader
+# Install script for directory: C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,18 +34,18 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/loclm-cxx/cmake_install.cmake")
+  include("C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/loclm-cxx/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/loclm-csharp/cmake_install.cmake")
+  include("C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/loclm-csharp/cmake_install.cmake")
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/install_local_manifest.txt"
+  file(WRITE "C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
 if(CMAKE_INSTALL_COMPONENT)
@@ -61,6 +61,6 @@ else()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

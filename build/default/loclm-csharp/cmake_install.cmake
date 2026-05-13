@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp
+# Install script for directory: C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -35,6 +35,6 @@ endif()
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/loclm-csharp/install_local_manifest.txt"
+  file(WRITE "C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/loclm-csharp/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

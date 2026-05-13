@@ -2,19 +2,19 @@
   "version": 2,
   "dgSpecHash": "j15zMGDRXMo=",
   "success": true,
-  "projectFilePath": "C:\\Users\\ksuti\\Desktop\\Lake-of-Creatures-Mod-Loader\\loclm-csharp\\loclm-csharp.csproj",
+  "projectFilePath": "C:\\Users\\Estonia\\Desktop\\Lake-of-Creatures-Mod-Loader\\loclm-csharp\\loclm-csharp.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\ksuti\\.nuget\\packages\\magick.net-q8-anycpu\\14.13.0\\magick.net-q8-anycpu.14.13.0.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\magick.net.core\\14.13.0\\magick.net.core.14.13.0.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\microsoft.codeanalysis.analyzers\\5.3.0-2.25625.1\\microsoft.codeanalysis.analyzers.5.3.0-2.25625.1.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\microsoft.codeanalysis.common\\5.3.0\\microsoft.codeanalysis.common.5.3.0.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\microsoft.codeanalysis.csharp\\5.3.0\\microsoft.codeanalysis.csharp.5.3.0.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\microsoft.codeanalysis.csharp.scripting\\5.3.0\\microsoft.codeanalysis.csharp.scripting.5.3.0.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\microsoft.codeanalysis.scripting.common\\5.3.0\\microsoft.codeanalysis.scripting.common.5.3.0.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0\\microsoft.win32.systemevents.6.0.0.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\propertychanged.fody\\4.1.0\\propertychanged.fody.4.1.0.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\sharpziplib\\1.4.2\\sharpziplib.1.4.2.nupkg.sha512",
-    "C:\\Users\\ksuti\\.nuget\\packages\\system.drawing.common\\6.0.0\\system.drawing.common.6.0.0.nupkg.sha512"
+    "C:\\Users\\Estonia\\.nuget\\packages\\magick.net-q8-anycpu\\14.13.0\\magick.net-q8-anycpu.14.13.0.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\magick.net.core\\14.13.0\\magick.net.core.14.13.0.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\microsoft.codeanalysis.analyzers\\5.3.0-2.25625.1\\microsoft.codeanalysis.analyzers.5.3.0-2.25625.1.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\microsoft.codeanalysis.common\\5.3.0\\microsoft.codeanalysis.common.5.3.0.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\microsoft.codeanalysis.csharp\\5.3.0\\microsoft.codeanalysis.csharp.5.3.0.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\microsoft.codeanalysis.csharp.scripting\\5.3.0\\microsoft.codeanalysis.csharp.scripting.5.3.0.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\microsoft.codeanalysis.scripting.common\\5.3.0\\microsoft.codeanalysis.scripting.common.5.3.0.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0\\microsoft.win32.systemevents.6.0.0.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\propertychanged.fody\\4.1.0\\propertychanged.fody.4.1.0.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\sharpziplib\\1.4.2\\sharpziplib.1.4.2.nupkg.sha512",
+    "C:\\Users\\Estonia\\.nuget\\packages\\system.drawing.common\\6.0.0\\system.drawing.common.6.0.0.nupkg.sha512"
   ],
   "logs": []
 }

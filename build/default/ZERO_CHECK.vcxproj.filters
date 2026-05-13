@@ -1,7 +1,7 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\build\default\CMakeFiles\0561d34c1a464ce85f5b9ddf460e96c1\generate.stamp.rule">
+    <CustomBuild Include="C:\Users\Estonia\Desktop\Lake-of-Creatures-Mod-Loader\build\default\CMakeFiles\0561d34c1a464ce85f5b9ddf460e96c1\generate.stamp.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
   </ItemGroup>

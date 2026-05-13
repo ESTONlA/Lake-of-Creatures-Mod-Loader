@@ -73,7 +73,7 @@ CMAKE_EXE_LINKER_FLAGS_RELEASE:STRING=/INCREMENTAL:NO
 CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO:STRING=/debug /INCREMENTAL
 
 //Value Computed by CMake.
-CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC=C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/CMakeFiles/pkgRedirects
+CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC=C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/CMakeFiles/pkgRedirects
 
 //Install path prefix, prepended onto install directories.
 CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/loclm
@@ -191,7 +191,7 @@ CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
 //Directory under which to collect all populated content
-FETCHCONTENT_BASE_DIR:PATH=C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps
+FETCHCONTENT_BASE_DIR:PATH=C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps
 
 //Disables all attempts to download or update content and assumes
 // source dirs already exist
@@ -214,13 +214,13 @@ FETCHCONTENT_UPDATES_DISCONNECTED_UNDERTALEMODTOOL:BOOL=OFF
 GIT_EXECUTABLE:FILEPATH=C:/Program Files/Git/cmd/git.exe
 
 //Value Computed by CMake
-loclm_BINARY_DIR:STATIC=C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default
+loclm_BINARY_DIR:STATIC=C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default
 
 //Value Computed by CMake
 loclm_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
-loclm_SOURCE_DIR:STATIC=C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader
+loclm_SOURCE_DIR:STATIC=C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader
 
 
 ########################
@@ -230,7 +230,7 @@ loclm_SOURCE_DIR:STATIC=C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader
 //ADVANCED property for variable: CMAKE_AR
 CMAKE_AR-ADVANCED:INTERNAL=1
 //This is the directory where this CMakeCache.txt was created
-CMAKE_CACHEFILE_DIR:INTERNAL=c:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default
+CMAKE_CACHEFILE_DIR:INTERNAL=c:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default
 //Major version of cmake used to create the current loaded cache
 CMAKE_CACHE_MAJOR_VERSION:INTERNAL=4
 //Minor version of cmake used to create the current loaded cache
@@ -291,7 +291,7 @@ CMAKE_GENERATOR_PLATFORM:INTERNAL=
 CMAKE_GENERATOR_TOOLSET:INTERNAL=
 //Source directory with the top level CMakeLists.txt file for this
 // project
-CMAKE_HOME_DIRECTORY:INTERNAL=C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader
+CMAKE_HOME_DIRECTORY:INTERNAL=C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader
 //ADVANCED property for variable: CMAKE_LINKER
 CMAKE_LINKER-ADVANCED:INTERNAL=1
 //Name of CMakeLists files to read

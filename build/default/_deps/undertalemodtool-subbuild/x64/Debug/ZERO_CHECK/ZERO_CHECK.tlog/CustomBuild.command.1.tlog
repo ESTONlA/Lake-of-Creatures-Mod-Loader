@@ -1,6 +1,6 @@
-^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\DEFAULT\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\769D66CC627E1BF0BB85A9AB8359CAC4\GENERATE.STAMP.RULE
+^C:\USERS\Estonia\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\DEFAULT\_DEPS\UNDERTALEMODTOOL-SUBBUILD\CMAKEFILES\769D66CC627E1BF0BB85A9AB8359CAC4\GENERATE.STAMP.RULE
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-subbuild -BC:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-subbuild/undertalemodtool-populate.sln
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-subbuild -BC:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/Estonia/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-subbuild/undertalemodtool-populate.sln
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
