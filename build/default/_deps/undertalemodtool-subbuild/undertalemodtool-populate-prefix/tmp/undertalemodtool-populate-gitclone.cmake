@@ -52,13 +52,13 @@ endif()
 
 execute_process(
   COMMAND "C:/Program Files/Git/cmd/git.exe"
-          checkout "7b876ad457eca5cdd69957dc02ef57a569412e5e" --
+          checkout "92387986e4ee99974406bedb7d061d42871e944f" --
   WORKING_DIRECTORY "C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-src"
   RESULT_VARIABLE error_code
   ${maybe_show_command}
 )
 if(error_code)
-  message(FATAL_ERROR "Failed to checkout tag: '7b876ad457eca5cdd69957dc02ef57a569412e5e'")
+  message(FATAL_ERROR "Failed to checkout tag: '92387986e4ee99974406bedb7d061d42871e944f'")
 endif()
 
 set(init_submodules TRUE)

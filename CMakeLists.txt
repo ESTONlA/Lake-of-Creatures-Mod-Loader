@@ -10,7 +10,8 @@ include(FetchContent)
 FetchContent_Declare(
     undertalemodtool
     GIT_REPOSITORY https://github.com/krzys-h/UndertaleModTool.git
-    GIT_TAG 7b876ad457eca5cdd69957dc02ef57a569412e5e
+    GIT_TAG 92387986e4ee99974406bedb7d061d42871e944f
+    GIT_SUBMODULES_RECURSE TRUE
 )
 
 FetchContent_MakeAvailable(undertalemodtool)

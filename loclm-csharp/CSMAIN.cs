@@ -18,9 +18,12 @@ class LOCLM
 {
     public static void Main(string[] args)
     {
-        void handler(string e)
+        void handler(string e, bool isImportant)
         {
-            Console.WriteLine("EXCEPTION WHILE READING DATA.WIN: \n" + e);
+            if (isImportant)
+            {
+                Console.WriteLine("EXCEPTION WHILE READING DATA.WIN: \n" + e);
+            }
             return;
         }
         void handler2(string e)
@@ -42,7 +45,10 @@ class LOCLM
         Console.WriteLine("Creating file stream...");
         FileStream readStream = File.OpenRead(originalDataWinPath);
         Console.WriteLine($"Reading unmodified data.win from \"{originalDataWinPath}\"...");
-        UndertaleData unmodifiedData = UndertaleIO.Read(readStream, (UndertaleReader.WarningHandlerDelegate)handler, (UndertaleReader.MessageHandlerDelegate)handler2);
+        UndertaleData unmodifiedData = UndertaleIO.Read(
+            readStream,
+            (UndertaleReader.WarningHandlerDelegate)handler,
+            (UndertaleReader.MessageHandlerDelegate)handler2);
         readStream.Dispose();
 
         UndertaleData data = unmodifiedData;

@@ -76,29 +76,15 @@
     <PostBuildEvent>
       <Message></Message>
       <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.exe C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0 C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.runtimeconfig.json C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.deps.json C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/ICSharpCode.SharpZipLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/Microsoft.Win32.SystemEvents.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/PropertyChanged.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/System.Drawing.Common.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/runtimes C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/runtimes
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -120,29 +106,15 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message></Message>
       <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.exe C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0 C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.runtimeconfig.json C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.deps.json C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/ICSharpCode.SharpZipLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/Microsoft.Win32.SystemEvents.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/PropertyChanged.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/System.Drawing.Common.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/runtimes C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/runtimes
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -164,29 +136,15 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message></Message>
       <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.exe C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0 C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.runtimeconfig.json C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.deps.json C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/ICSharpCode.SharpZipLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/Microsoft.Win32.SystemEvents.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/PropertyChanged.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/System.Drawing.Common.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/runtimes C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/runtimes
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -208,29 +166,15 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message></Message>
       <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.exe C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0 C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E remove_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.runtimeconfig.json C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/mods
 if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/loclm-csharp.deps.json C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/ICSharpCode.SharpZipLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/Microsoft.Win32.SystemEvents.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/PropertyChanged.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/System.Drawing.Common.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/
-if %errorlevel% neq 0 goto :cmEnd
-"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net6.0/runtimes C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/out/bin//loclm/runtimes
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/loclm-csharp/bin/Debug/net10.0/UndertaleModLib.dll C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/mod_template/
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone

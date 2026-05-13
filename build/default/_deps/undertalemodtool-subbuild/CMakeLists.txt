@@ -27,7 +27,7 @@ set_property(GLOBAL PROPERTY _CMAKE_FindGit_GIT_EXECUTABLE_VERSION
 
 include(ExternalProject)
 ExternalProject_Add(undertalemodtool-populate
-                     "UPDATE_DISCONNECTED" "False" "GIT_REPOSITORY" "https://github.com/krzys-h/UndertaleModTool.git" "EXTERNALPROJECT_INTERNAL_ARGUMENT_SEPARATOR" "GIT_TAG" "7b876ad457eca5cdd69957dc02ef57a569412e5e"
+                     "UPDATE_DISCONNECTED" "False" "GIT_REPOSITORY" "https://github.com/krzys-h/UndertaleModTool.git" "EXTERNALPROJECT_INTERNAL_ARGUMENT_SEPARATOR" "GIT_TAG" "92387986e4ee99974406bedb7d061d42871e944f" "GIT_SUBMODULES_RECURSE" "TRUE"
                     SOURCE_DIR          "C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-src"
                     BINARY_DIR          "C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/_deps/undertalemodtool-build"
                     CONFIGURE_COMMAND   ""
