@@ -56,19 +56,3 @@ For the easy-mode template:
 ```powershell
 dotnet new loclm -e
 ```
-
-## Documentation
-
-The docs site lives in [`docs`](docs) and uses Astro + Starlight.
-
-```powershell
-Set-Location docs
-npm install
-npm run dev
-```
-
-## Notes
-
-- The C# loader looks for mods under `loclm/mods/`.
-- Mods are ordered by `priority` from each mod's `modinfo.json`.
-- Optional `blacklist.txt` and `whitelist.txt` files can live beside the LOCLM runtime inside the `loclm/` directory.
