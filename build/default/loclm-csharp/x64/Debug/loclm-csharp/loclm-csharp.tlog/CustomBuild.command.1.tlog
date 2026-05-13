@@ -1,0 +1,24 @@
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\BUILD\DEFAULT\CMAKEFILES\667EC103EC263591452DAEA8DB5F3AFA\LOCLM-CSHARP.RULE
+setlocal
+cd C:\Users\ksuti\Desktop\Lake-of-Creatures-Mod-Loader\loclm-csharp
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+dotnet build
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\KSUTI\DESKTOP\LAKE-OF-CREATURES-MOD-LOADER\LOCLM-CSHARP\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader -BC:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default --check-stamp-file C:/Users/ksuti/Desktop/Lake-of-Creatures-Mod-Loader/build/default/loclm-csharp/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

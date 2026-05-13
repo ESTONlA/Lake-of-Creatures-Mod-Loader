@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "Px91ceHZQUA=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\ksuti\\Desktop\\Lake-of-Creatures-Mod-Loader\\loclm-csharp\\loclm-csharp.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\ksuti\\.nuget\\packages\\microsoft.csharp\\4.7.0\\microsoft.csharp.4.7.0.nupkg.sha512",
+    "C:\\Users\\ksuti\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0\\microsoft.win32.systemevents.6.0.0.nupkg.sha512",
+    "C:\\Users\\ksuti\\.nuget\\packages\\propertychanged.fody\\3.3.3\\propertychanged.fody.3.3.3.nupkg.sha512",
+    "C:\\Users\\ksuti\\.nuget\\packages\\sharpziplib\\1.3.3\\sharpziplib.1.3.3.nupkg.sha512",
+    "C:\\Users\\ksuti\\.nuget\\packages\\system.drawing.common\\6.0.0\\system.drawing.common.6.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
