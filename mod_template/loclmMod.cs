@@ -8,9 +8,9 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 #endif
 
-namespace GS2ML_MOD_NAME;
+namespace LOCLM_MOD_NAME;
 
-public class GS2ML_MOD_NAME
+public class LOCLM_MOD_NAME
 {
 #if( easymode )
     public string assetPath;
@@ -35,10 +35,10 @@ public class GS2ML_MOD_NAME
         
         
         
-        Console.WriteLine($"[GS2ML_MOD_NAME]: Adding objects...");
+        Console.WriteLine($"[LOCLM_MOD_NAME]: Adding objects...");
         AddObjects();
 
-        Console.WriteLine($"[GS2ML_MOD_NAME]: Loading code from files...");
+        Console.WriteLine($"[LOCLM_MOD_NAME]: Loading code from files...");
         files = LoadCodeFromFiles(Path.Combine(assetPath, "code"));
 
 
@@ -55,7 +55,7 @@ public class GS2ML_MOD_NAME
 
 
 
-        Console.WriteLine($"[GS2ML_MOD_NAME]: Adding code...");
+        Console.WriteLine($"[LOCLM_MOD_NAME]: Adding code...");
         AddCode();
 #endif
     }
@@ -143,12 +143,12 @@ public class GS2ML_MOD_NAME
         string value = "";
         if (files.TryGetValue(path, out value))
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: loading {path}");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: loading {path}");
             moddingData.HookFunction(function, value);
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't hook function {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't hook function {path}, it wasn't in the files dictionary.");
         }
     }
     public void CreateFunctionFromFile(string path, string function, ushort argumentCount = 0)
@@ -156,12 +156,12 @@ public class GS2ML_MOD_NAME
         string value = "";
         if (files.TryGetValue(path, out value))
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: loading {path}");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: loading {path}");
             moddingData.CreateFunction(function, value, argumentCount);
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't create function {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't create function {path}, it wasn't in the files dictionary.");
         }
     }
 
@@ -170,12 +170,12 @@ public class GS2ML_MOD_NAME
         string value = "";
         if (files.TryGetValue(path, out value))
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: loading {path}");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: loading {path}");
             moddingData.HookCode(function, value);
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't hook object script {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't hook object script {path}, it wasn't in the files dictionary.");
         }
     }
 
@@ -192,7 +192,7 @@ public class GS2ML_MOD_NAME
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
         }
     }
 
@@ -208,7 +208,7 @@ public class GS2ML_MOD_NAME
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
         }
     }
     public void CreateObjectCodeFromFile(string path, string objName, EventType eventType, uint EventSubtype)
@@ -223,7 +223,7 @@ public class GS2ML_MOD_NAME
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
         }
     }
     public void CreateObjectCodeFromFile(string path, string objName, EventType eventType, EventSubtypeKey EventSubtype)
@@ -238,7 +238,7 @@ public class GS2ML_MOD_NAME
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
         }
     }
 
@@ -254,7 +254,7 @@ public class GS2ML_MOD_NAME
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
         }
     }
 
@@ -271,7 +271,7 @@ public class GS2ML_MOD_NAME
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
         }
     }
 
@@ -287,7 +287,7 @@ public class GS2ML_MOD_NAME
         }
         else
         {
-            Console.WriteLine($"[GS2ML_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
+            Console.WriteLine($"[LOCLM_MOD_NAME]: Couldn't change/create object script {path}, it wasn't in the files dictionary.");
         }
     }
 
@@ -295,7 +295,7 @@ public class GS2ML_MOD_NAME
     {
         Dictionary<string, string> files = new Dictionary<string, string>();
         string[] codeF = Directory.GetFiles(path, "*.gml");
-        Console.WriteLine($"[GS2ML_MOD_NAME]: Loading code from {path}");
+        Console.WriteLine($"[LOCLM_MOD_NAME]: Loading code from {path}");
         foreach (string f in codeF)
         {
             if (!files.ContainsKey(Path.GetFileName(f)))

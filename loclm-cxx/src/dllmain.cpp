@@ -87,7 +87,7 @@ void loadMods() {
     ZeroMemory(&si, sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
     // Execute c# code
-    std::filesystem::path csExePath = (game_path.parent_path() / "gs2ml" / "gs2ml-csharp.exe");
+    std::filesystem::path csExePath = (game_path.parent_path() / "loclm" / "loclm-csharp.exe");
     #define max_size 5120
     wchar_t lpCommandLine[max_size] = L"\0";
 

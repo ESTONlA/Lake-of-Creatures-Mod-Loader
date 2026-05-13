@@ -1,0 +1,22 @@
+
+cmake_minimum_required (VERSION 3.8)
+
+add_custom_target(loclm-csharp ALL
+	COMMAND dotnet build
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_custom_command(TARGET loclm-csharp POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E make_directory "${Output_Bin_Dir}/loclm"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/loclm-csharp.exe "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/loclm-csharp.dll "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/loclm-csharp.runtimeconfig.json "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/loclm-csharp.deps.json "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/UndertaleModLib.dll "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/UndertaleModLib.dll "${CMAKE_SOURCE_DIR}/mod_template/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/ICSharpCode.SharpZipLib.dll "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/Microsoft.Win32.SystemEvents.dll "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/PropertyChanged.dll "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/System.Drawing.Common.dll "${Output_Bin_Dir}/loclm/"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug/net6.0/runtimes "${Output_Bin_Dir}/loclm/runtimes"
+
+)

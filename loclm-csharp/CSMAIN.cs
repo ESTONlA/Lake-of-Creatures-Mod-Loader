@@ -14,7 +14,7 @@ using System.Linq;
 //It's only SOME of the time too.
 //Anyways, that's why I used the messy "path + "\\" + path + "\\" + path...... method. :(
 
-class GS2ML
+class LOCLM
 {
     public static void Main(string[] args)
     {
@@ -30,9 +30,9 @@ class GS2ML
         }
         string originalDataWinPath = args[0];
         string gameExecutable = args[1];
-        string gs2mlDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        string outputDataWinPath = Path.Combine(Path.GetDirectoryName(originalDataWinPath), "GS2ML_CACHE_data.win");
-        string modsDirectory = Path.Combine(gs2mlDirectory, "mods");
+        string loclmDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        string outputDataWinPath = Path.Combine(Path.GetDirectoryName(originalDataWinPath), "LOCLM_CACHE_data.win");
+        string modsDirectory = Path.Combine(loclmDirectory, "mods");
 
         if (!Directory.Exists(modsDirectory))
         {
@@ -53,13 +53,13 @@ class GS2ML
         bool hasErrored = false;
         string[] blacklisted = {};
         string[] whitelisted = {};
-        if (File.Exists(Path.Combine(gs2mlDirectory, "blacklist.txt")))
+        if (File.Exists(Path.Combine(loclmDirectory, "blacklist.txt")))
         {
-            blacklisted = File.ReadAllLines(Path.Combine(gs2mlDirectory, "blacklist.txt"));
+            blacklisted = File.ReadAllLines(Path.Combine(loclmDirectory, "blacklist.txt"));
         }
-        if (File.Exists(Path.Combine(gs2mlDirectory, "whitelist.txt")))
+        if (File.Exists(Path.Combine(loclmDirectory, "whitelist.txt")))
         {
-            whitelisted = File.ReadAllLines(Path.Combine(gs2mlDirectory, "whitelist.txt"));
+            whitelisted = File.ReadAllLines(Path.Combine(loclmDirectory, "whitelist.txt"));
         }
         List<ModInfo> modDataList = new List<ModInfo>();
         for (int i = 0; i < modDirectories.Length; i++)
@@ -82,7 +82,7 @@ class GS2ML
                 }
             } else
             {
-                Console.WriteLine($"There is no mod info file for \"{modPath}\".\nThis isn't an error (most likely).\nWe will still attempt to load the mod without the mod info json file.\nWARNING: THIS WILL ERROR IN A FUTURE VERSION OF GS2ML!!!\nPausing so this message is seen, press enter to continue loading.");
+                Console.WriteLine($"There is no mod info file for \"{modPath}\".\nThis isn't an error (most likely).\nWe will still attempt to load the mod without the mod info json file.\nWARNING: THIS WILL ERROR IN A FUTURE VERSION OF LOCLM!!!\nPausing so this message is seen, press enter to continue loading.");
                 Console.ReadLine();
                 ModInfo modData = new ModInfo
                 {

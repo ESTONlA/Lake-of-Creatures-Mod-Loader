@@ -4,7 +4,7 @@
 
 cmake_minimum_required (VERSION 3.27)
 
-project ("gsml")
+project ("loclm")
 include(FetchContent)
 
 FetchContent_Declare(
@@ -21,6 +21,6 @@ set(Output_Bin_Dir "${CMAKE_SOURCE_DIR}/out/bin/")
 
 
 # Include sub-projects.
-add_subdirectory ("gs2ml-cxx")
+add_subdirectory ("loclm-cxx")
 
-add_subdirectory("gs2ml-csharp")
+add_subdirectory("loclm-csharp")

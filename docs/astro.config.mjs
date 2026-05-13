@@ -4,15 +4,15 @@ import starlight from '@astrojs/starlight';
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://omegametor.github.io',
-  	base: '/GS2ML/',
+	base: '/LOCLM/',
 	integrations: [
 		starlight({
-			title: 'GS2ML Documentation',
+			title: 'LOCLM Documentation',
 			social: {
-				github: 'https://github.com/OmegaMetor/GS2ML',
+				github: 'https://github.com/OmegaMetor/LOCLM',
 			},
 			editLink: {
-				baseUrl: "https://github.com/OmegaMetor/GS2ML/edit/main/docs/"
+				baseUrl: "https://github.com/OmegaMetor/LOCLM/edit/main/docs/"
 			},
 			sidebar: [
 				{
