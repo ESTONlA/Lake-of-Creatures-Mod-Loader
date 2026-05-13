@@ -6,9 +6,9 @@
             "displayName": "Default Config",
             "description": "Default build using Visual Studio 2022 generator",
             "generator": "Visual Studio 17 2022",
-            "binaryDir": "${sourceDir}/build/default",
+            "binaryDir": "${sourceDir}/build/x64",
             "architecture": {
-                "value": "x86",
+                "value": "x64",
                 "strategy": "external"
               }
         }
