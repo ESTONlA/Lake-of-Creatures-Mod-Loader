@@ -56,3 +56,8 @@ For the easy-mode template:
 ```powershell
 dotnet new loclm -e
 ```
+
+LOCLM is based on / inspired by GS2ML by OmegaMetor:
+https://github.com/OmegaMetor/GS2ML
+
+GS2ML is licensed under GPL-3.0, and this project keeps the same GPL-3.0 license.
