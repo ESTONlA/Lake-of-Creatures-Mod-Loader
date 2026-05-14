@@ -12,7 +12,10 @@ add_library(loclm-cxx SHARED "src/dllmain.cpp" "res/version.def")
 
 target_include_directories(loclm-cxx PRIVATE "include/")
 
-set_target_properties(loclm-cxx PROPERTIES OUTPUT_NAME "version")
+set_target_properties(loclm-cxx PROPERTIES
+	OUTPUT_NAME "version"
+	MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+)
 
 add_custom_command(TARGET loclm-cxx POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${Output_Bin_Dir}

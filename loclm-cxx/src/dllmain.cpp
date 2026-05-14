@@ -1,18 +1,13 @@
-
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <filesystem>
 #include <shellapi.h>
-#include <iostream>
-#include <fstream>
-#include <DbgHelp.h>
-#include <chrono>
-#include <thread>
-#include <intrin.h>
 
+#include <string>
+#include <vector>
 
-constexpr auto PROXY_DLL = TEXT("version.dll");
-constexpr auto PROXY_MAX_PATH = 260;
+constexpr wchar_t PROXY_DLL[] = L"version.dll";
+constexpr wchar_t LOADER_EXE[] = L"loclm-csharp.exe";
+constexpr wchar_t LOG_FILE[] = L"LOCLM_proxy.log";
 
 #define DLL_PROXY_ORIGINAL(name) original_##name
 
@@ -25,168 +20,307 @@ constexpr auto PROXY_MAX_PATH = 260;
 
 #undef DLL_NAME
 
-std::filesystem::path getSystemDirectory() {
-    wchar_t SystemDirectoryPath[MAX_PATH] = { 0 };
-    
-    if (!GetSystemDirectoryW(SystemDirectoryPath, MAX_PATH))
-        std::cout << "GetSystemDirectoryW fails: " << GetLastError() << std::endl;
-
-    return SystemDirectoryPath;
-}
-
 bool hasLoaded = false;
-bool hasGameArg = false;
 
-std::filesystem::path getProcessDirectory() {
-    wchar_t buffer[MAX_PATH];
-    GetModuleFileName(NULL, buffer, sizeof(buffer));
-    return std::filesystem::path(buffer).parent_path();
-}
-
-void logLine(const std::string& message) {
-    std::ofstream logFile(getProcessDirectory() / "LOCLM_proxy.log", std::ios::app);
-    if (logFile) {
-        logFile << message << std::endl;
+std::wstring getProcessPath()
+{
+    std::vector<wchar_t> buffer(32768);
+    DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+    if (length == 0 || length >= buffer.size())
+    {
+        return L"";
     }
+
+    return std::wstring(buffer.data(), length);
 }
 
-bool loadProxy() {
-    logLine("loadProxy: start");
-    const auto libPath = getSystemDirectory() / PROXY_DLL;
-    const auto lib = LoadLibrary(libPath.c_str());
-    if(!lib) {
-        logLine("loadProxy: failed to load system version.dll");
+std::wstring getDirectory(const std::wstring& path)
+{
+    size_t slash = path.find_last_of(L"\\/");
+    if (slash == std::wstring::npos)
+    {
+        return L".";
+    }
+
+    return path.substr(0, slash);
+}
+
+std::wstring joinPath(const std::wstring& left, const std::wstring& right)
+{
+    if (left.empty())
+    {
+        return right;
+    }
+
+    wchar_t last = left[left.size() - 1];
+    if (last == L'\\' || last == L'/')
+    {
+        return left + right;
+    }
+
+    return left + L"\\" + right;
+}
+
+std::string wideToUtf8(const std::wstring& value)
+{
+    if (value.empty())
+    {
+        return "";
+    }
+
+    int size = WideCharToMultiByte(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr);
+    if (size <= 0)
+    {
+        return "";
+    }
+
+    std::string result(size, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, value.c_str(), static_cast<int>(value.size()), result.data(), size, nullptr, nullptr);
+    return result;
+}
+
+void logLine(const std::wstring& message)
+{
+    std::wstring processPath = getProcessPath();
+    std::wstring processDir = getDirectory(processPath);
+    std::wstring logPath = joinPath(processDir, LOG_FILE);
+
+    HANDLE file = CreateFileW(
+        logPath.c_str(),
+        FILE_APPEND_DATA,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+
+    if (file == INVALID_HANDLE_VALUE)
+    {
+        OutputDebugStringW((L"LOCLM proxy log failed: " + message + L"\n").c_str());
+        return;
+    }
+
+    std::string line = wideToUtf8(message + L"\r\n");
+    DWORD written = 0;
+    WriteFile(file, line.data(), static_cast<DWORD>(line.size()), &written, nullptr);
+    CloseHandle(file);
+}
+
+std::wstring getLastErrorText(DWORD error)
+{
+    wchar_t* message = nullptr;
+    DWORD length = FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr,
+        error,
+        0,
+        reinterpret_cast<LPWSTR>(&message),
+        0,
+        nullptr);
+
+    if (length == 0 || message == nullptr)
+    {
+        return L"error " + std::to_wstring(error);
+    }
+
+    std::wstring result(message, length);
+    LocalFree(message);
+    return result;
+}
+
+std::wstring quoteArgument(const std::wstring& value)
+{
+    std::wstring quoted = L"\"";
+    for (wchar_t ch : value)
+    {
+        if (ch == L'"')
+        {
+            quoted += L"\\\"";
+        }
+        else
+        {
+            quoted += ch;
+        }
+    }
+
+    quoted += L"\"";
+    return quoted;
+}
+
+bool hasGameArgument()
+{
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argv == nullptr)
+    {
+        logLine(L"hasGameArgument: CommandLineToArgvW failed: " + getLastErrorText(GetLastError()));
         return false;
     }
 
-    #define DLL_NAME(name) DLL_PROXY_ORIGINAL(name) = GetProcAddress(lib, ###name);
-    #include "proxy.h"
-    DLL_NAME(GetFileVersionInfoSizeA)
-    #undef DLL_NAME
-
-    logLine("loadProxy: success");
-    return true;
-}
-
-void loadMods() {
-    logLine("loadMods: start");
-    if (hasGameArg || hasLoaded) return;
-    hasLoaded = true;
-    LPWSTR lpCmdLine = GetCommandLine();
-    std::wstring commandLine(lpCmdLine);
-
-    int argc;
-    LPWSTR* argv = CommandLineToArgvW(lpCmdLine, &argc);
-    LPWSTR executable(argv[0]);
-    wchar_t buffer[MAX_PATH];
-    GetModuleFileName(NULL, buffer, sizeof(buffer));
-    std::filesystem::path game_path = std::filesystem::path(buffer);
-    
-    for (int i = 0; i < argc; ++i)
+    bool found = false;
+    for (int i = 1; i < argc; ++i)
     {
-        std::wstring argument(argv[i]);
-        if (argument == L"-game")
-            hasGameArg = true;
-    }
-    if (hasGameArg)
-        return;
-
-
-    std::filesystem::path data_win_path = std::filesystem::path(buffer).parent_path() / "data.win";
-
-
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&si, sizeof(STARTUPINFO));
-    si.cb = sizeof(STARTUPINFO);
-    std::filesystem::path csExePath = (game_path.parent_path() / "loclm" / "loclm-csharp.exe");
-    #define max_size 5120
-    wchar_t lpCommandLine[max_size] = L"\0";
-
-    #define concat_cmd(cmdline, path) \
-    wcscat_s(cmdline, max_size, L"\""); \
-    wcscat_s(cmdline, max_size, (LPWSTR)path.c_str()); \
-    wcscat_s(cmdline, max_size, L"\" ")
-
-    concat_cmd(lpCommandLine, csExePath);
-    concat_cmd(lpCommandLine, data_win_path);
-    concat_cmd(lpCommandLine, game_path);
-
-    std::wstring cliString;
-    
-    if(argc > 1){
-        for (int i = 1; i < argc; ++i) {
-            std::wstring arg(argv[i]);
-            cliString += L'"' + arg + L'"'; 
-            cliString += L' '; 
+        if (std::wstring(argv[i]) == L"-game")
+        {
+            found = true;
+            break;
         }
-    }
-    
-    if (!cliString.empty()) {
-        cliString.pop_back();
-    }
-
-    wcscat_s(lpCommandLine, max_size, cliString.c_str());
-
-    int error;
-    error = CreateProcess(csExePath.c_str(), lpCommandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-    if(0 == error)
-    {
-        logLine("loadMods: CreateProcess failed");
-        std::cout << "ERROR: " << GetLastError() << std::endl;
-    }
-    else
-    {
-        logLine("loadMods: CreateProcess succeeded");
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
     }
 
     LocalFree(argv);
+    return found;
 }
 
-DWORD WINAPI ThreadProc(LPVOID lpParam)
+bool loadProxy()
 {
-    SuspendThread(lpParam); 
-    loadMods();
-    ResumeThread(lpParam);
-    exit(0);
+    logLine(L"loadProxy: start");
+
+    wchar_t systemDirectory[MAX_PATH] = {};
+    if (GetSystemDirectoryW(systemDirectory, MAX_PATH) == 0)
+    {
+        logLine(L"loadProxy: GetSystemDirectoryW failed: " + getLastErrorText(GetLastError()));
+        return false;
+    }
+
+    std::wstring systemVersionPath = joinPath(systemDirectory, PROXY_DLL);
+    HMODULE library = LoadLibraryW(systemVersionPath.c_str());
+    if (library == nullptr)
+    {
+        logLine(L"loadProxy: LoadLibraryW failed: " + getLastErrorText(GetLastError()));
+        return false;
+    }
+
+#define DLL_NAME(name) DLL_PROXY_ORIGINAL(name) = GetProcAddress(library, #name);
+#include "proxy.h"
+#undef DLL_NAME
+
+    logLine(L"loadProxy: success");
+    return true;
+}
+
+void showLaunchFailure(const std::wstring& message)
+{
+    MessageBoxW(nullptr, message.c_str(), L"LOCLM proxy launch failed", MB_OK | MB_ICONERROR);
+}
+
+void launchLoader()
+{
+    if (hasLoaded)
+    {
+        return;
+    }
+
+    hasLoaded = true;
+    logLine(L"launchLoader: start");
+
+    std::wstring gamePath = getProcessPath();
+    std::wstring gameDir = getDirectory(gamePath);
+    std::wstring dataWinPath = joinPath(gameDir, L"data.win");
+    std::wstring loaderPath = joinPath(joinPath(gameDir, L"loclm"), LOADER_EXE);
+
+    if (GetFileAttributesW(loaderPath.c_str()) == INVALID_FILE_ATTRIBUTES)
+    {
+        std::wstring message = L"LOCLM loader executable was not found:\n" + loaderPath;
+        logLine(L"launchLoader: " + message);
+        showLaunchFailure(message);
+        return;
+    }
+
+    if (GetFileAttributesW(dataWinPath.c_str()) == INVALID_FILE_ATTRIBUTES)
+    {
+        std::wstring message = L"data.win was not found:\n" + dataWinPath;
+        logLine(L"launchLoader: " + message);
+        showLaunchFailure(message);
+        return;
+    }
+
+    std::wstring commandLine = quoteArgument(loaderPath) + L" " + quoteArgument(dataWinPath) + L" " + quoteArgument(gamePath);
+
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argv != nullptr)
+    {
+        for (int i = 1; i < argc; ++i)
+        {
+            commandLine += L" ";
+            commandLine += quoteArgument(argv[i]);
+        }
+
+        LocalFree(argv);
+    }
+
+    STARTUPINFOW startupInfo = {};
+    PROCESS_INFORMATION processInfo = {};
+    startupInfo.cb = sizeof(startupInfo);
+
+    std::vector<wchar_t> mutableCommandLine(commandLine.begin(), commandLine.end());
+    mutableCommandLine.push_back(L'\0');
+
+    logLine(L"launchLoader: CreateProcessW " + commandLine);
+    BOOL created = CreateProcessW(
+        loaderPath.c_str(),
+        mutableCommandLine.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        0,
+        nullptr,
+        gameDir.c_str(),
+        &startupInfo,
+        &processInfo);
+
+    if (!created)
+    {
+        DWORD error = GetLastError();
+        std::wstring message = L"Could not start LOCLM loader:\n" + loaderPath + L"\n\n" + getLastErrorText(error);
+        logLine(L"launchLoader: CreateProcessW failed: " + getLastErrorText(error));
+        showLaunchFailure(message);
+        return;
+    }
+
+    CloseHandle(processInfo.hProcess);
+    CloseHandle(processInfo.hThread);
+    logLine(L"launchLoader: CreateProcessW success, closing original game process");
+    ExitProcess(0);
+}
+
+DWORD WINAPI loaderThread(LPVOID)
+{
+    Sleep(100);
+    launchLoader();
     return 0;
 }
 
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
-
-    if (ul_reason_for_call != DLL_PROCESS_ATTACH)
+BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
+{
+    if (reason != DLL_PROCESS_ATTACH)
+    {
         return TRUE;
+    }
 
-    logLine("DllMain: process attach");
-    AllocConsole();
-    freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
-    if (!loadProxy()) {
-        logLine("DllMain: loadProxy failed");
+    DisableThreadLibraryCalls(module);
+    logLine(L"DllMain: process attach");
+
+    if (!loadProxy())
+    {
+        logLine(L"DllMain: loadProxy failed");
         return FALSE;
     }
 
-    LPWSTR lpCmdLine = GetCommandLine();
-    std::wstring commandLine(lpCmdLine);
-    int argc;
-    LPWSTR* argv = CommandLineToArgvW(lpCmdLine, &argc);
-    for (int i = 0; i < argc; ++i)
+    if (hasGameArgument())
     {
-        std::wstring argument(argv[i]);
-        if (argument == L"-game")
-            hasGameArg = true;
-    }
-    if (!hasGameArg) {
-        logLine("DllMain: creating loader thread");
-        HANDLE thisThread = OpenThread(THREAD_ALL_ACCESS, FALSE, GetCurrentThreadId());
-        HANDLE loaderThread = CreateThread(NULL, 0, ThreadProc, thisThread, 0, NULL);
-        if (loaderThread == 0) 
-        {
-            logLine("DllMain: CreateThread failed");
-            return FALSE;
-        }
+        logLine(L"DllMain: -game detected, not launching LOCLM again");
+        return TRUE;
     }
 
+    HANDLE thread = CreateThread(nullptr, 0, loaderThread, nullptr, 0, nullptr);
+    if (thread == nullptr)
+    {
+        logLine(L"DllMain: CreateThread failed: " + getLastErrorText(GetLastError()));
+        return TRUE;
+    }
+
+    CloseHandle(thread);
+    logLine(L"DllMain: loader thread created");
     return TRUE;
 }
