@@ -1,12 +1,8 @@
 ﻿using UndertaleModLib;
 using System.IO;
-using System.Xml;
-using System.Drawing;
 using System.Reflection;
 using System.Diagnostics;
-using static System.Environment;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -15,65 +11,6 @@ using UndertaleModLib.Models;
 class LOCLM
 {
     private const string LoaderVersion = "0.3.0-beta";
-    private static readonly SuspiciousPattern[] SuspiciousPatterns =
-    {
-        new(
-            "process_spawn",
-            "Starts external processes or shell commands.",
-            "System.Diagnostics.Process",
-            "Process.Start",
-            "Start-Process",
-            "cmd.exe",
-            "powershell",
-            "wscript.exe",
-            "cscript.exe",
-            "mshta.exe",
-            "rundll32.exe",
-            "regsvr32.exe"),
-        new(
-            "native_code",
-            "Uses native process/memory APIs or P/Invoke.",
-            "DllImport",
-            "DllImportAttribute",
-            "NativeLibrary.Load",
-            "LoadLibrary",
-            "GetProcAddress",
-            "VirtualAlloc",
-            "WriteProcessMemory",
-            "CreateRemoteThread"),
-        new(
-            "network_access",
-            "Uses network clients or sockets.",
-            "System.Net.Http",
-            "HttpClient",
-            "WebClient",
-            "TcpClient",
-            "UdpClient",
-            "System.Net.Sockets.Socket",
-            "DownloadFile",
-            "DownloadString"),
-        new(
-            "destructive_io",
-            "Deletes or overwrites files/directories.",
-            "File.Delete",
-            "Directory.Delete",
-            "DeleteFile",
-            "File.WriteAllBytes",
-            "File.WriteAllText"),
-        new(
-            "registry_access",
-            "Touches the Windows registry.",
-            "Microsoft.Win32.Registry",
-            "RegistryKey"),
-        new(
-            "runtime_code_loading",
-            "Builds or loads code dynamically at runtime.",
-            "Assembly.Load",
-            "Assembly.LoadFrom",
-            "Reflection.Emit",
-            "Convert.FromBase64String",
-            "FromBase64String")
-    };
 
     private static bool SupportsColor => !Console.IsOutputRedirected;
 
@@ -150,6 +87,7 @@ class LOCLM
         string outputDataWinPath = Path.Combine(dataDirectory, "LOCLM_CACHE_data.win");
         string cacheManifestPath = Path.Combine(dataDirectory, "LOCLM_CACHE_manifest.json");
         string modsDirectory = Path.Combine(loclmDirectory, "mods");
+        string securityAllowlistPath = Path.Combine(loclmDirectory, "security_allowlist.json");
 
         LogBanner();
         LogInfo($"Game executable: {gameExecutable}");
@@ -174,6 +112,7 @@ class LOCLM
             LogWarn($"Created missing mods folder: {modsDirectory}");
         }
 
+        SecurityAllowlist securityAllowlist = SecurityAllowlist.Load(securityAllowlistPath, LogWarn);
         string cacheFingerprint = BuildCacheFingerprint(originalDataWinPath, gameExecutable, loclmDirectory, modsDirectory);
         if (IsCacheValid(outputDataWinPath, cacheManifestPath, cacheFingerprint))
         {
@@ -221,54 +160,30 @@ class LOCLM
         {
             string modPath = Path.Combine(modsDirectory, Path.GetFileName(modDirectories[i]));
             LogStep($"Reading mod metadata from \"{modPath}\"");
-            if(File.Exists(Path.Combine(modPath, "modinfo.json")))
-            {
-                string jsonText = File.ReadAllText(Path.Combine(modPath, "modinfo.json"));
-                try
-                {
-                    ModInfo? modData = JsonSerializer.Deserialize<ModInfo>(jsonText);
-                    if (modData is null)
-                    {
-                        throw new InvalidOperationException("modinfo.json deserialized to null.");
-                    }
-                    modData.modPath = modDirectories[i];
-                    modDataList.Add(modData);
-                } catch(Exception ex)
-                {
-                    LogError($"Mod has invalid modinfo.json: {modPath}");
-                    LogPlain(ex.Message);
-                    failedMods.Add($"{Path.GetFileName(modPath)}: invalid modinfo.json");
-                    hasErrored = true;
-                    break;
-                }
-            } else
-            {
-                LogWarn($"No modinfo.json for \"{modPath}\".");
-                LogWarn("Loading anyway for compatibility.");
-                LogWarn("This will become a hard error in a future version of LOCLM.");
-                LogPlain("Press Enter to continue.");
-                Console.ReadLine();
-                ModInfo modData = new ModInfo
-                {
-                    modName = "Unknown mod " + i.ToString(),
-                    authors = new string[]{ "Unknown Author" },
-                    description = "This mod does not have a modinfo.json file. This could be because it is an old mod or because the owner forgot to add one.",
-                    priority = 999999 // If it doesn't have the json, it should load last.
-                };
 
-                if(whitelisted.Length != 0)
-                {
-                    if(!(Array.IndexOf(whitelisted, modData.modName) >= 0))
-                        continue;
-                }
-                if(Array.IndexOf(blacklisted, modData.modName) >= 0)
-                {
-                    continue;
-                }
-                
-                modData.modPath = modDirectories[i];
-                modDataList.Add(modData);
+            ModManifestResult manifest = ModManifestValidator.Load(modPath);
+            if (!manifest.Success || manifest.ModInfo is null)
+            {
+                string error = manifest.Error ?? "invalid modinfo.json.";
+                LogError($"Skipping mod \"{Path.GetFileName(modPath)}\": {error}");
+                failedMods.Add($"{Path.GetFileName(modPath)}: {error}");
+                continue;
             }
+
+            ModInfo modData = manifest.ModInfo;
+            if (whitelisted.Length != 0 && !(Array.IndexOf(whitelisted, modData.modName) >= 0))
+            {
+                LogWarn($"Skipping \"{modData.modName}\" because it is not in whitelist.txt.");
+                continue;
+            }
+
+            if (Array.IndexOf(blacklisted, modData.modName) >= 0)
+            {
+                LogWarn($"Skipping \"{modData.modName}\" because it is in blacklist.txt.");
+                continue;
+            }
+
+            modDataList.Add(modData);
         }
         List<ModInfo> prioritizedModInfo = modDataList.OrderBy(o => o.priority).ToList();
         for (int i = 0; i < prioritizedModInfo.Count; i++)
@@ -279,16 +194,21 @@ class LOCLM
             string dllPath = Path.Combine(modPath, Path.GetFileName(prioritizedModInfo[i].modPath) + ".dll");
             if (File.Exists(dllPath))
             {
-                SecurityScanResult securityScan = ScanModSecurity(modPath, dllPath);
+                SecurityScanResult securityScan = SecurityScanner.ScanMod(modPath, dllPath, securityAllowlist);
                 if (securityScan.IsBlocked)
                 {
                     string modDisplayName = GetModDisplayName(prioritizedModInfo[i]);
                     string reason = securityScan.Summary;
                     LogError($"Security scan blocked \"{modDisplayName}\": {reason}");
+                    LogWarn($"Allowlist hash for review only: {securityScan.ModHash}");
                     LogWarn("This can be a false positive, but it is not always false. The mod was not loaded.");
                     securityBlockedMods.Add($"{modDisplayName}: {reason}");
                     failedMods.Add($"{modDisplayName}: blocked by security scan");
                     continue;
+                }
+                if (securityScan.IsAllowedByAllowlist)
+                {
+                    LogWarn($"Security scan found suspicious code in \"{GetModDisplayName(prioritizedModInfo[i])}\", but its mod hash is allowlisted.");
                 }
 
                 UndertaleData backupOfBeforeData = data;
@@ -471,6 +391,8 @@ Continue? (y to continue, anything else to exit.)
         AppendFileHash(builder, "proxy-dll", Path.Combine(Path.GetDirectoryName(originalDataWinPath) ?? "", "version.dll"));
         AppendFileHash(builder, "blacklist", Path.Combine(loclmDirectory, "blacklist.txt"));
         AppendFileHash(builder, "whitelist", Path.Combine(loclmDirectory, "whitelist.txt"));
+        AppendFileHash(builder, "security-allowlist", Path.Combine(loclmDirectory, "security_allowlist.json"));
+        AppendDirectoryFingerprint(builder, "gml-assets", Path.Combine(loclmDirectory, "assets", "gml"));
         AppendDirectoryFingerprint(builder, "mods", modsDirectory);
 
         using SHA256 sha = SHA256.Create();
@@ -562,268 +484,59 @@ Continue? (y to continue, anything else to exit.)
         importGroup.QueueFindReplace(
             "gml_GlobalScript_main_menu_spawn_buttons",
             "btn_yy = 4;",
-            @"
-btn_yy = 4;
-    if (!variable_global_exists(""loclm_menu_open""))
-    {
-        global.loclm_menu_open = false;
-    }
-    global.loclm_security_block_count = " + securityBlockedMods.Count.ToString() + @";
-    global.loclm_security_warning_title = " + QuoteGmlString(securityWarningTitle) + @";
-    global.loclm_security_warning_body = " + QuoteGmlString(securityWarningBody) + @";
-    if (global.current_menu == 3 && global.loclm_menu_open == false)
-    {
-        global.button_unlock[90] = 1;
-        var button = instance_create_depth(52, (room_height / 2) + 15 + btn_yy, -999, obj_loclm_button);
-        button.button_index = 90;
-    }");
+            LoadGmlAsset(
+                "main_menu_spawn_buttons.patch.gml",
+                ("__SECURITY_BLOCK_COUNT__", securityBlockedMods.Count.ToString()),
+                ("__SECURITY_WARNING_TITLE__", QuoteGmlString(securityWarningTitle)),
+                ("__SECURITY_WARNING_BODY__", QuoteGmlString(securityWarningBody))));
 
         importGroup.QueueReplace(
             loclmButton.EventHandlerFor(EventType.Create, data),
-            @"
-event_inherited();
-click_delete = false;");
+            LoadGmlAsset("loclm_button_create.gml"));
 
         importGroup.QueueReplace(
             loclmButton.EventHandlerFor(EventType.Alarm, 0u, data),
-            @"
-event_inherited();
-my_text = ""LOCLM"";
-fadeout_dir = 1;
-if (button_index == 91)
-{
-    my_text = ""Back"";
-}
-if (button_index == 92)
-{
-    my_text = ""Copy Mods Path"";
-}");
+            LoadGmlAsset("loclm_button_alarm0.gml"));
 
         importGroup.QueueReplace(
             loclmButton.EventHandlerFor(EventType.Alarm, 2u, data),
-            @"
-var loclm_handled = false;
-if (button_index == 90 || button_index == 91 || button_index == 92)
-{
-    if (variable_instance_exists(id, ""clicked"") && clicked == true)
-    {
-        loclm_handled = true;
-        switch (button_index)
-        {
-            case 90:
-                if (global.current_menu == 3)
-                {
-                    global.loclm_menu_open = true;
-                    global.loclm_loaded_scroll = 0;
-                    global.loclm_folder_copied_timer = 0;
-" + loadedModsSetup + failedModsSetup + @"
-                    global.cursor_index_menu = 0;
-                    with (obj_button_menu)
-                    {
-                        if (option_menu_tab_button == false && object_index != obj_loclm_button)
-                        {
-                            instance_destroy();
-                        }
-                    }
-                    x = 78;
-                    y = room_height - 42;
-                    depth = -100001;
-                    button_index = 91;
-                    clicked = false;
-                    fadeout = false;
-                    click_delete = false;
-                    canclick = true;
-                    alarm[0] = 1;
-                    var folder_button = instance_create_depth(245, room_height - 42, -100001, obj_loclm_button);
-                    folder_button.button_index = 92;
-                    folder_button.click_delete = false;
-                }
-                break;
-            case 91:
-                global.loclm_menu_open = false;
-                global.current_menu = 3;
-                global.cursor_index_menu = 0;
-                with (obj_loclm_button)
-                {
-                    instance_destroy();
-                }
-                main_menu_spawn_buttons();
-                break;
-            case 92:
-                clipboard_set_text(" + QuoteGmlString(modsDirectory) + @");
-                global.loclm_folder_copied_timer = 120;
-                clicked = false;
-                bg_scale = 1.1;
-                break;
-        }
-    }
-}
-if (loclm_handled == false)
-{
-    event_inherited();
-}");
+            LoadGmlAsset(
+                "loclm_button_alarm2.gml",
+                ("__LOADED_MODS_SETUP__", loadedModsSetup),
+                ("__FAILED_MODS_SETUP__", failedModsSetup),
+                ("__MODS_DIRECTORY__", QuoteGmlString(modsDirectory))));
 
         importGroup.QueueReplace(
             loclmButton.EventHandlerFor(EventType.Draw, EventSubtypeDraw.Draw, data),
-            @"
-if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == true && button_index == 91)
-{
-    var panel_x = 20;
-    var panel_y = 16;
-    var panel_w = room_width - 40;
-    var panel_h = room_height - 82;
-    var text_x = panel_x + 18;
-    var text_y = panel_y + 14;
-    var left_x = text_x;
-    var right_x = panel_x + 242;
-    var section_y = text_y + 82;
-
-    draw_set_alpha(0.78);
-    draw_set_color(c_black);
-    draw_rectangle(panel_x, panel_y, panel_x + panel_w, panel_y + panel_h, false);
-    draw_set_alpha(0.9);
-    draw_set_color(global.color_outline);
-    draw_rectangle(panel_x, panel_y, panel_x + panel_w, panel_y + panel_h, true);
-    draw_set_alpha(1);
-
-    draw_set_font(global.font_current);
-    draw_set_halign(fa_left);
-    draw_set_valign(fa_top);
-
-    draw_set_color(global.color_yellow);
-    draw_text_outline_b2x(text_x, text_y, ""LOCLM"");
-    draw_set_color(c_white);
-    draw_text(text_x, text_y + 25, ""Community-built loader for Lake of Creatures"");
-    draw_set_color(12632256);
-    draw_text(text_x, text_y + 45, ""Made by Estonia, for love of the game."");
-
-    draw_set_color(global.color_yellow);
-    draw_text(left_x, section_y, ""Loader Version"");
-    draw_set_color(c_white);
-    draw_text(left_x + 18, section_y + 22, " + QuoteGmlString(LoaderVersion) + @");
-
-    draw_set_color(global.color_yellow);
-    draw_text(right_x, section_y, ""Loaded Mods"");
-    draw_set_color(c_white);
-    var loaded_visible = 4;
-    var loaded_count = global.loclm_loaded_mod_count;
-    if (loaded_count <= 0)
-    {
-        draw_text(right_x + 18, section_y + 22, ""None"");
-    }
-    else
-    {
-        var loaded_start = global.loclm_loaded_scroll;
-        var loaded_end = min(loaded_count, loaded_start + loaded_visible);
-        for (var i = loaded_start; i < loaded_end; i += 1)
-        {
-            var mod_name = string(global.loclm_loaded_mods[i]);
-            if (string_length(mod_name) > 35)
-            {
-                mod_name = string_copy(mod_name, 1, 32) + ""..."";
-            }
-            draw_text(right_x + 18, section_y + 22 + ((i - loaded_start) * 20), ""- "" + mod_name);
-        }
-        if (loaded_count > loaded_visible)
-        {
-            draw_set_color(8421504);
-            draw_text(right_x + 112, section_y, string(loaded_start + 1) + ""-"" + string(loaded_end) + ""/"" + string(loaded_count));
-            draw_text(right_x + 18, section_y + 106, ""Scroll: wheel / Up / Down"");
-        }
-    }
-
-    if (variable_global_exists(""loclm_folder_copied_timer"") && global.loclm_folder_copied_timer > 0)
-    {
-        draw_set_color(global.color_yellow);
-        draw_text(panel_x + panel_w - 138, panel_y + panel_h - 24, ""Path copied."");
-    }
-}
-event_inherited();
-");
+            LoadGmlAsset("loclm_button_draw.gml", ("__LOADER_VERSION__", QuoteGmlString(LoaderVersion))));
 
         importGroup.QueueAppend(
             "gml_Object_obj_ctrl_main_menu_Draw_0",
-            @"
-if (variable_global_exists(""loclm_security_block_count"") && global.loclm_security_block_count > 0)
-{
-    var loclm_about_open = false;
-    if (variable_global_exists(""loclm_menu_open""))
-    {
-        loclm_about_open = global.loclm_menu_open;
-    }
-    if (global.current_menu == 3 && loclm_about_open == false)
-    {
-        var warning_x = 18;
-        var warning_y = room_height - 110;
-        var warning_w = room_width - 36;
-        var warning_h = 70;
-        draw_set_alpha(0.86);
-        draw_set_color(c_black);
-        draw_rectangle(warning_x, warning_y, warning_x + warning_w, warning_y + warning_h, false);
-        draw_set_alpha(1);
-        draw_set_color(global.color_yellow);
-        draw_rectangle(warning_x, warning_y, warning_x + warning_w, warning_y + warning_h, true);
-        draw_set_font(global.font_current);
-        draw_set_halign(fa_left);
-        draw_set_valign(fa_top);
-        draw_set_color(global.color_yellow);
-        draw_text(warning_x + 14, warning_y + 10, string(global.loclm_security_warning_title));
-        draw_set_color(c_white);
-        draw_text_ext(warning_x + 14, warning_y + 30, string(global.loclm_security_warning_body), 16, warning_w - 28);
-        draw_set_alpha(1);
-    }
-}");
+            LoadGmlAsset("main_menu_draw_security_warning.gml"));
 
         importGroup.QueueAppend(
             "gml_Object_obj_ctrl_main_menu_Step_0",
-            @"
-if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == true && global.current_menu != 3)
-{
-    global.loclm_menu_open = false;
-    with (obj_loclm_button)
-    {
-        instance_destroy();
-    }
-}
-
-if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == true)
-{
-    logo_alpha = 0;
-    logo_alpha_2 = 0;
-    press_any_key_alpha = 0;
-    if (!variable_global_exists(""loclm_loaded_scroll""))
-    {
-        global.loclm_loaded_scroll = 0;
-    }
-    var loclm_max_scroll = max(0, global.loclm_loaded_mod_count - 5);
-    if (mouse_wheel_down() || input_check_pressed(""down""))
-    {
-        global.loclm_loaded_scroll = min(loclm_max_scroll, global.loclm_loaded_scroll + 1);
-    }
-    if (mouse_wheel_up() || input_check_pressed(""up""))
-    {
-        global.loclm_loaded_scroll = max(0, global.loclm_loaded_scroll - 1);
-    }
-    if (variable_global_exists(""loclm_folder_copied_timer"") && global.loclm_folder_copied_timer > 0)
-    {
-        global.loclm_folder_copied_timer -= 1;
-    }
-}
-
-if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == true && input_check_pressed(""leave""))
-{
-    global.loclm_menu_open = false;
-    global.current_menu = 3;
-    global.cursor_index_menu = 0;
-    with (obj_loclm_button)
-    {
-        instance_destroy();
-    }
-    main_menu_spawn_buttons();
-}");
+            LoadGmlAsset("main_menu_step.gml"));
 
         importGroup.Import();
         LogSuccess("Installed LOCLM about button clone and info panel.");
+    }
+
+    private static string LoadGmlAsset(string fileName, params (string Token, string Value)[] replacements)
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "assets", "gml", fileName);
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException("Missing LOCLM GML asset.", path);
+        }
+
+        string code = File.ReadAllText(path);
+        foreach ((string token, string value) in replacements)
+        {
+            code = code.Replace(token, value);
+        }
+
+        return code;
     }
 
     private static string GetModDisplayName(ModInfo modInfo)
@@ -862,107 +575,6 @@ if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == tru
         return "Blocked: " + firstBlockedMod + extra +
             "\nThis can be a false positive, but it is not always false. The mod was not loaded.";
     }
-
-    private static SecurityScanResult ScanModSecurity(string modPath, string dllPath)
-    {
-        List<SecurityFinding> findings = new();
-        ScanFileForSuspiciousPatterns(dllPath, Path.GetFileName(dllPath), findings);
-
-        foreach (string filePath in EnumerateSecurityScanFiles(modPath, dllPath))
-        {
-            if (findings.Count >= SecurityScanResult.MaxFindings)
-            {
-                break;
-            }
-
-            string relativePath = Path.GetRelativePath(modPath, filePath).Replace('\\', '/');
-            ScanFileForSuspiciousPatterns(filePath, relativePath, findings);
-        }
-
-        return new SecurityScanResult(findings);
-    }
-
-    private static IEnumerable<string> EnumerateSecurityScanFiles(string modPath, string mainDllPath)
-    {
-        if (!Directory.Exists(modPath))
-        {
-            yield break;
-        }
-
-        string mainDllFullPath = Path.GetFullPath(mainDllPath);
-        foreach (string filePath in Directory.GetFiles(modPath, "*", SearchOption.AllDirectories)
-                     .OrderBy(path => Path.GetRelativePath(modPath, path), StringComparer.OrdinalIgnoreCase))
-        {
-            string fullPath = Path.GetFullPath(filePath);
-            if (string.Equals(fullPath, mainDllFullPath, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            string fileName = Path.GetFileName(filePath);
-            if (IsKnownLoaderDependency(fileName))
-            {
-                continue;
-            }
-
-            string extension = Path.GetExtension(filePath).ToLowerInvariant();
-            if (extension is ".dll" or ".exe" or ".gml" or ".cs" or ".json" or ".txt" or ".cfg" or ".ini")
-            {
-                yield return filePath;
-            }
-        }
-    }
-
-    private static bool IsKnownLoaderDependency(string fileName) =>
-        fileName.Equals("UndertaleModLib.dll", StringComparison.OrdinalIgnoreCase) ||
-        fileName.Equals("Underanalyzer.dll", StringComparison.OrdinalIgnoreCase) ||
-        fileName.Equals("System.Drawing.Common.dll", StringComparison.OrdinalIgnoreCase) ||
-        fileName.Equals("ICSharpCode.SharpZipLib.dll", StringComparison.OrdinalIgnoreCase);
-
-    private static void ScanFileForSuspiciousPatterns(string path, string displayPath, List<SecurityFinding> findings)
-    {
-        const long maxScanBytes = 16 * 1024 * 1024;
-        FileInfo file = new(path);
-        if (!file.Exists || file.Length > maxScanBytes)
-        {
-            return;
-        }
-
-        byte[] bytes = File.ReadAllBytes(path);
-        string asciiText = ExtractPrintableAscii(bytes);
-        string utf16Text = Encoding.Unicode.GetString(bytes);
-        foreach (SuspiciousPattern pattern in SuspiciousPatterns)
-        {
-            if (findings.Count >= SecurityScanResult.MaxFindings)
-            {
-                return;
-            }
-
-            foreach (string needle in pattern.Needles)
-            {
-                if (ContainsIgnoreCase(asciiText, needle) || ContainsIgnoreCase(utf16Text, needle))
-                {
-                    findings.Add(new SecurityFinding(pattern.Id, displayPath, pattern.Description));
-                    break;
-                }
-            }
-        }
-    }
-
-    private static string ExtractPrintableAscii(byte[] bytes)
-    {
-        char[] chars = new char[bytes.Length];
-        for (int i = 0; i < bytes.Length; i++)
-        {
-            byte value = bytes[i];
-            chars[i] = value >= 32 && value <= 126 ? (char)value : ' ';
-        }
-
-        return new string(chars);
-    }
-
-    private static bool ContainsIgnoreCase(string haystack, string needle) =>
-        haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
 
     private static string TrimForMenu(string value, int maxLength)
     {
@@ -1025,52 +637,4 @@ if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == tru
         return loclmButton;
     }
 
-}
-
-public class ModInfo
-{
-    public string modPath = "";
-    public string modName { get; set; } = "";
-    public string[] authors { get; set; } = Array.Empty<string>();
-    public string description { get; set; } = "";
-    public int priority { get; set; }
-}
-
-public class CacheManifest
-{
-    public string loaderVersion { get; set; } = "";
-    public string fingerprint { get; set; } = "";
-    public string createdUtc { get; set; } = "";
-}
-
-public sealed record SuspiciousPattern(string Id, string Description, params string[] Needles);
-
-public sealed record SecurityFinding(string Rule, string File, string Description);
-
-public sealed class SecurityScanResult
-{
-    public const int MaxFindings = 50;
-
-    public SecurityScanResult(IReadOnlyList<SecurityFinding> findings)
-    {
-        Findings = findings;
-    }
-
-    public IReadOnlyList<SecurityFinding> Findings { get; }
-    public bool IsBlocked => Findings.Count > 0;
-
-    public string Summary
-    {
-        get
-        {
-            if (Findings.Count == 0)
-            {
-                return "clean";
-            }
-
-            SecurityFinding first = Findings[0];
-            string extra = Findings.Count > 1 ? $" (+{Findings.Count - 1} more)" : "";
-            return $"{first.Rule} in {first.File}{extra}";
-        }
-    }
 }
