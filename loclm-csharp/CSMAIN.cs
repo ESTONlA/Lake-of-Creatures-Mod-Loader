@@ -10,7 +10,7 @@ using UndertaleModLib.Models;
 
 class LOCLM
 {
-    private const string LoaderVersion = "0.3.0-beta";
+    private const string LoaderVersion = "0.4.0-beta";
 
     private static bool SupportsColor => !Console.IsOutputRedirected;
 

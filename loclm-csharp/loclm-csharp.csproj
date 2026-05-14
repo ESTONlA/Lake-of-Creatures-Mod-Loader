@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>loclm-csharp</AssemblyName>
     <SelfContained>false</SelfContained>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,5 +23,39 @@
     <Content Include="assets\gml\**\*.gml" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="security_allowlist.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="TrimReleaseOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <ReleaseTrimDirectories Include="
+        $(TargetDir)cs;
+        $(TargetDir)de;
+        $(TargetDir)es;
+        $(TargetDir)fr;
+        $(TargetDir)it;
+        $(TargetDir)ja;
+        $(TargetDir)ko;
+        $(TargetDir)pl;
+        $(TargetDir)pt-BR;
+        $(TargetDir)ru;
+        $(TargetDir)tr;
+        $(TargetDir)zh-Hans;
+        $(TargetDir)zh-Hant;
+        $(TargetDir)win-x64;
+        $(TargetDir)runtimes\linux-arm64;
+        $(TargetDir)runtimes\linux-musl-x64;
+        $(TargetDir)runtimes\linux-x64;
+        $(TargetDir)runtimes\osx-arm64;
+        $(TargetDir)runtimes\osx-x64;
+        $(TargetDir)runtimes\win-arm64;
+        $(TargetDir)runtimes\win-x86;
+        $(TargetDir)runtimes\unix" />
+      <ReleaseTrimFiles Include="
+        $(TargetDir)*.pdb;
+        $(TargetDir)UndertaleModLib.xml" />
+    </ItemGroup>
+
+    <RemoveDir Directories="@(ReleaseTrimDirectories)" />
+    <Delete Files="@(ReleaseTrimFiles)" />
+  </Target>
 
 </Project>
