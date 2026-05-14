@@ -1,0 +1,42 @@
+  name: Release LOCLM
+
+  on:
+    push:
+      tags:
+        - "v*.*.*"
+    workflow_dispatch:
+
+  jobs:
+    release:
+      name: Build and Release Windows x64
+      runs-on: windows-latest
+
+      permissions:
+        contents: write
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Setup .NET
+          uses: actions/setup-dotnet@v4
+          with:
+            dotnet-version: "10.0.x"
+
+        - name: Configure CMake
+          run: cmake --preset default
+
+        - name: Build
+          run: cmake --build --preset Debug
+
+        - name: Package release
+          shell: pwsh
+          run: |
+            New-Item -ItemType Directory -Force dist | Out-Null
+            Compress-Archive -Path out/bin/* -DestinationPath dist/LOCLM-Windows-x64.zip -Force
+
+        - name: Create GitHub Release
+          uses: softprops/action-gh-release@v2
+          with:
+            files: dist/LOCLM-Windows-x64.zip
+            generate_release_notes: true
