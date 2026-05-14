@@ -195,9 +195,10 @@ class LOCLM
             if (File.Exists(dllPath))
             {
                 SecurityScanResult securityScan = SecurityScanner.ScanMod(modPath, dllPath, securityAllowlist);
+                string modDisplayName = GetModDisplayName(prioritizedModInfo[i]);
+                LogInfo($"\"{modDisplayName}\" Hash \"{securityScan.ModHash}\"");
                 if (securityScan.IsBlocked)
                 {
-                    string modDisplayName = GetModDisplayName(prioritizedModInfo[i]);
                     string reason = securityScan.Summary;
                     LogError($"Security scan blocked \"{modDisplayName}\": {reason}");
                     LogWarn($"Allowlist hash for review only: {securityScan.ModHash}");
@@ -292,15 +293,13 @@ There was an error during the mod loading process!
 Please review the above error!
 
 If you wish to continue launching the game, type 'y' and press enter.
-Any other input will close this window without launching the game.
+This console will stay open until you type 'y' or close it manually.
 
 If you continue to launch the game, the mods you have added may not work as expected, or even may not work at all.
 ********************
-Continue? (y to continue, anything else to exit.)
->", ConsoleColor.Yellow, false);
-            string? Input = Console.ReadLine();
-            if(Input != "y")
-                return;
+Continue? (type y and press Enter)
+", ConsoleColor.Yellow);
+            WaitForYes();
         }
 
         UndertaleData outputData = data;
@@ -332,6 +331,11 @@ Continue? (y to continue, anything else to exit.)
             return;
         }
 
+        WriteColored("", ConsoleColor.White);
+        WriteColored("LOCLM is ready to relaunch the game.", ConsoleColor.Yellow);
+        WriteColored("Type 'y' and press Enter to continue. This window will stay open until then.", ConsoleColor.Yellow);
+        WaitForYes();
+
         string argstring = "";
         for(int i = 2; i < args.Length; i++)
         {
@@ -340,6 +344,21 @@ Continue? (y to continue, anything else to exit.)
             argstring += "\"";
         }
         Process.Start(gameExecutable, $"-game \"{outputDataWinPath}\"" + argstring);
+    }
+
+    private static void WaitForYes()
+    {
+        while (true)
+        {
+            WriteColored("> ", ConsoleColor.Yellow, false);
+            string? input = Console.ReadLine();
+            if (string.Equals(input?.Trim(), "y", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            LogWarn("Type 'y' and press Enter to continue.");
+        }
     }
 
     private static bool IsCacheValid(string outputDataWinPath, string cacheManifestPath, string cacheFingerprint)
