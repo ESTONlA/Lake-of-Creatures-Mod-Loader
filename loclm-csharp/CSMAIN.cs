@@ -17,6 +17,9 @@ using UndertaleModLib.Models;
 
 class LOCLM
 {
+    private static readonly string LoaderVersion =
+        Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
+
     private static bool SupportsColor => !Console.IsOutputRedirected;
 
     private static void WriteColored(string text, ConsoleColor color, bool newline = true)
@@ -120,6 +123,8 @@ class LOCLM
             whitelisted = File.ReadAllLines(Path.Combine(loclmDirectory, "whitelist.txt"));
         }
         List<ModInfo> modDataList = new List<ModInfo>();
+        List<string> loadedMods = new List<string>();
+        List<string> failedMods = new List<string>();
         for (int i = 0; i < modDirectories.Length; i++)
         {
             string modPath = Path.Combine(modsDirectory, Path.GetFileName(modDirectories[i]));
@@ -135,6 +140,7 @@ class LOCLM
                 } catch(Exception e)
                 {
                     LogError($"Mod has invalid modinfo.json: {modPath}");
+                    failedMods.Add($"{Path.GetFileName(modPath)}: invalid modinfo.json");
                     hasErrored = true;
                     break;
                 }
@@ -202,6 +208,7 @@ class LOCLM
                     int audioGroup = 0;
                     loadMethod.Invoke(instanceOfType, new object[] { audioGroup, data });
                     LogSuccess($"Loaded mod \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\"");
+                    loadedMods.Add(GetModDisplayName(prioritizedModInfo[i]));
                 }
                 catch (TargetInvocationException tie)
                 {
@@ -209,6 +216,7 @@ class LOCLM
                     LogError($"Error while loading \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\": {e.Message}");
                     LogPlain(e.StackTrace ?? "");
                     LogWarn("Skipping to next mod.");
+                    failedMods.Add($"{GetModDisplayName(prioritizedModInfo[i])}: {e.Message}");
                     data = backupOfBeforeData;
                     hasErrored = true;
                 }
@@ -217,11 +225,12 @@ class LOCLM
             {
                 LogError($"DLL file does not exist: {dllPath}");
                 LogWarn("Skipping to next mod.");
+                failedMods.Add($"{GetModDisplayName(prioritizedModInfo[i])}: missing DLL");
                 hasErrored = true;
             }
         }
 
-        InstallLoaderAboutButton(data);
+        InstallLoaderAboutButton(data, modsDirectory, loadedMods, failedMods);
 
         if(hasErrored){
             WriteColored(
@@ -266,7 +275,11 @@ Continue? (y to continue, anything else to exit.)
         Process.Start(gameExecutable, $"-game \"{outputDataWinPath}\"" + argstring);
     }
 
-    private static void InstallLoaderAboutButton(UndertaleData data)
+    private static void InstallLoaderAboutButton(
+        UndertaleData data,
+        string modsDirectory,
+        IReadOnlyList<string> loadedMods,
+        IReadOnlyList<string> failedMods)
     {
         UndertaleGameObject buttonMenu = data.GameObjects.ByName("obj_button_menu");
         if (buttonMenu is null)
@@ -276,6 +289,8 @@ Continue? (y to continue, anything else to exit.)
         }
 
         UndertaleGameObject loclmButton = EnsureClonedMenuButton(data, buttonMenu);
+        string loadedModsSetup = BuildGmlStringArraySetup("loclm_loaded_mods", "loclm_loaded_mod_count", loadedMods);
+        string failedModsSetup = BuildGmlStringArraySetup("loclm_failed_mods", "loclm_failed_mod_count", failedMods);
 
         UndertaleModLib.Compiler.CodeImportGroup importGroup = new(data);
 
@@ -310,13 +325,17 @@ fadeout_dir = 1;
 if (button_index == 91)
 {
     my_text = ""Back"";
+}
+if (button_index == 92)
+{
+    my_text = ""Copy Mods Path"";
 }");
 
         importGroup.QueueReplace(
             loclmButton.EventHandlerFor(EventType.Alarm, 2u, data),
             @"
 var loclm_handled = false;
-if (button_index == 90 || button_index == 91)
+if (button_index == 90 || button_index == 91 || button_index == 92)
 {
     if (variable_instance_exists(id, ""clicked"") && clicked == true)
     {
@@ -327,6 +346,9 @@ if (button_index == 90 || button_index == 91)
                 if (global.current_menu == 3)
                 {
                     global.loclm_menu_open = true;
+                    global.loclm_loaded_scroll = 0;
+                    global.loclm_folder_copied_timer = 0;
+" + loadedModsSetup + failedModsSetup + @"
                     global.cursor_index_menu = 0;
                     with (obj_button_menu)
                     {
@@ -335,8 +357,8 @@ if (button_index == 90 || button_index == 91)
                             instance_destroy();
                         }
                     }
-                    x = 68;
-                    y = 198;
+                    x = 78;
+                    y = room_height - 42;
                     depth = -100001;
                     button_index = 91;
                     clicked = false;
@@ -344,14 +366,26 @@ if (button_index == 90 || button_index == 91)
                     click_delete = false;
                     canclick = true;
                     alarm[0] = 1;
+                    var folder_button = instance_create_depth(245, room_height - 42, -100001, obj_loclm_button);
+                    folder_button.button_index = 92;
+                    folder_button.click_delete = false;
                 }
                 break;
             case 91:
                 global.loclm_menu_open = false;
                 global.current_menu = 3;
                 global.cursor_index_menu = 0;
-                instance_destroy();
+                with (obj_loclm_button)
+                {
+                    instance_destroy();
+                }
                 main_menu_spawn_buttons();
+                break;
+            case 92:
+                clipboard_set_text(" + QuoteGmlString(modsDirectory) + @");
+                global.loclm_folder_copied_timer = 120;
+                clicked = false;
+                bg_scale = 1.1;
                 break;
         }
     }
@@ -364,18 +398,79 @@ if (loclm_handled == false)
         importGroup.QueueReplace(
             loclmButton.EventHandlerFor(EventType.Draw, EventSubtypeDraw.Draw, data),
             @"
-event_inherited();
 if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == true && button_index == 91)
 {
+    var panel_x = 20;
+    var panel_y = 16;
+    var panel_w = room_width - 40;
+    var panel_h = room_height - 82;
+    var text_x = panel_x + 18;
+    var text_y = panel_y + 14;
+    var left_x = text_x;
+    var right_x = panel_x + 242;
+    var section_y = text_y + 82;
+
+    draw_set_alpha(0.78);
+    draw_set_color(c_black);
+    draw_rectangle(panel_x, panel_y, panel_x + panel_w, panel_y + panel_h, false);
+    draw_set_alpha(0.9);
+    draw_set_color(global.color_outline);
+    draw_rectangle(panel_x, panel_y, panel_x + panel_w, panel_y + panel_h, true);
+    draw_set_alpha(1);
+
     draw_set_font(global.font_current);
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
-    draw_set_alpha(1);
+
     draw_set_color(global.color_yellow);
-    draw_text(28, 28, ""LOCLM"");
+    draw_text_outline_b2x(text_x, text_y, ""LOCLM"");
     draw_set_color(c_white);
-    draw_text_ext(28, 48, ""Created and maintained by Estonia.\nMade by the community, for the community.\nBuilt to stay out of the game's way."", 18, 280);
+    draw_text(text_x, text_y + 25, ""Community-built loader for Lake of Creatures"");
+    draw_set_color(12632256);
+    draw_text(text_x, text_y + 45, ""Made by Estonia, for love of the game."");
+
+    draw_set_color(global.color_yellow);
+    draw_text(left_x, section_y, ""Loader Version"");
+    draw_set_color(c_white);
+    draw_text(left_x + 18, section_y + 22, " + QuoteGmlString(LoaderVersion) + @");
+
+    draw_set_color(global.color_yellow);
+    draw_text(right_x, section_y, ""Loaded Mods"");
+    draw_set_color(c_white);
+    var loaded_visible = 4;
+    var loaded_count = global.loclm_loaded_mod_count;
+    if (loaded_count <= 0)
+    {
+        draw_text(right_x + 18, section_y + 22, ""None"");
+    }
+    else
+    {
+        var loaded_start = global.loclm_loaded_scroll;
+        var loaded_end = min(loaded_count, loaded_start + loaded_visible);
+        for (var i = loaded_start; i < loaded_end; i += 1)
+        {
+            var mod_name = string(global.loclm_loaded_mods[i]);
+            if (string_length(mod_name) > 35)
+            {
+                mod_name = string_copy(mod_name, 1, 32) + ""..."";
+            }
+            draw_text(right_x + 18, section_y + 22 + ((i - loaded_start) * 20), ""- "" + mod_name);
+        }
+        if (loaded_count > loaded_visible)
+        {
+            draw_set_color(8421504);
+            draw_text(right_x + 112, section_y, string(loaded_start + 1) + ""-"" + string(loaded_end) + ""/"" + string(loaded_count));
+            draw_text(right_x + 18, section_y + 106, ""Scroll: wheel / Up / Down"");
+        }
+    }
+
+    if (variable_global_exists(""loclm_folder_copied_timer"") && global.loclm_folder_copied_timer > 0)
+    {
+        draw_set_color(global.color_yellow);
+        draw_text(panel_x + panel_w - 138, panel_y + panel_h - 24, ""Path copied."");
+    }
 }
+event_inherited();
 ");
 
         importGroup.QueueAppend(
@@ -395,6 +490,23 @@ if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == tru
     logo_alpha = 0;
     logo_alpha_2 = 0;
     press_any_key_alpha = 0;
+    if (!variable_global_exists(""loclm_loaded_scroll""))
+    {
+        global.loclm_loaded_scroll = 0;
+    }
+    var loclm_max_scroll = max(0, global.loclm_loaded_mod_count - 5);
+    if (mouse_wheel_down() || input_check_pressed(""down""))
+    {
+        global.loclm_loaded_scroll = min(loclm_max_scroll, global.loclm_loaded_scroll + 1);
+    }
+    if (mouse_wheel_up() || input_check_pressed(""up""))
+    {
+        global.loclm_loaded_scroll = max(0, global.loclm_loaded_scroll - 1);
+    }
+    if (variable_global_exists(""loclm_folder_copied_timer"") && global.loclm_folder_copied_timer > 0)
+    {
+        global.loclm_folder_copied_timer -= 1;
+    }
 }
 
 if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == true && input_check_pressed(""leave""))
@@ -412,6 +524,40 @@ if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == tru
         importGroup.Import();
         LogSuccess("Installed LOCLM about button clone and info panel.");
     }
+
+    private static string GetModDisplayName(ModInfo modInfo)
+    {
+        if (!string.IsNullOrWhiteSpace(modInfo.modName))
+        {
+            return modInfo.modName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(modInfo.modPath))
+        {
+            return Path.GetFileName(modInfo.modPath);
+        }
+
+        return "Unknown Mod";
+    }
+
+    private static string BuildGmlStringArraySetup(string arrayName, string countName, IReadOnlyList<string> values)
+    {
+        string setup = $"                    global.{arrayName} = [];\n" +
+            $"                    global.{countName} = {values.Count};\n";
+        for (int i = 0; i < values.Count; i++)
+        {
+            setup += $"                    global.{arrayName}[{i}] = {QuoteGmlString(values[i])};\n";
+        }
+
+        return setup;
+    }
+
+    private static string QuoteGmlString(string value) =>
+        "\"" + value
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\r", "")
+            .Replace("\n", "\\n") + "\"";
 
     private static UndertaleGameObject EnsureClonedMenuButton(UndertaleData data, UndertaleGameObject buttonMenu)
     {
