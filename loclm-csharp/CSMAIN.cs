@@ -8,6 +8,8 @@ using static System.Environment;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using UndertaleModLib.Models;
 
 //NOTE TO PEOPLE LOOKING AT THIS CODE
@@ -17,8 +19,7 @@ using UndertaleModLib.Models;
 
 class LOCLM
 {
-    private static readonly string LoaderVersion =
-        Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
+    private const string LoaderVersion = "0.3.0-beta";
 
     private static bool SupportsColor => !Console.IsOutputRedirected;
 
@@ -84,6 +85,7 @@ class LOCLM
         string gameExecutable = args[1];
         string loclmDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
         string outputDataWinPath = Path.Combine(Path.GetDirectoryName(originalDataWinPath), "LOCLM_CACHE_data.win");
+        string cacheManifestPath = Path.Combine(Path.GetDirectoryName(originalDataWinPath), "LOCLM_CACHE_manifest.json");
         string modsDirectory = Path.Combine(loclmDirectory, "mods");
 
         LogBanner();
@@ -96,6 +98,18 @@ class LOCLM
             Directory.CreateDirectory(modsDirectory);
             LogWarn($"Created missing mods folder: {modsDirectory}");
         }
+
+        string cacheFingerprint = BuildCacheFingerprint(originalDataWinPath, gameExecutable, loclmDirectory, modsDirectory);
+        if (IsCacheValid(outputDataWinPath, cacheManifestPath, cacheFingerprint))
+        {
+            LogSuccess("Cache is up to date. Skipping regeneration.");
+            LogStep("Launching game");
+            LogInfo("Executable: " + gameExecutable);
+            LaunchGame(gameExecutable, outputDataWinPath, args);
+            return;
+        }
+
+        LogStep("Cache is missing or outdated. Regenerating patched data.win.");
 
         LogStep("Opening data.win");
         FileStream readStream = File.OpenRead(originalDataWinPath);
@@ -262,9 +276,18 @@ Continue? (y to continue, anything else to exit.)
         LogStep($"Writing modified data.win to \"{outputDataWinPath}\"...");
         UndertaleIO.Write(writeStream, outputData);
         writeStream.Dispose();
+        if (!hasErrored)
+        {
+            WriteCacheManifest(cacheManifestPath, cacheFingerprint);
+        }
         LogSuccess("Done.");
         LogStep("Launching game");
         LogInfo("Executable: " + gameExecutable);
+        LaunchGame(gameExecutable, outputDataWinPath, args);
+    }
+
+    private static void LaunchGame(string gameExecutable, string outputDataWinPath, string[] args)
+    {
         string argstring = "";
         for(int i = 2; i < args.Length; i++)
         {
@@ -273,6 +296,117 @@ Continue? (y to continue, anything else to exit.)
             argstring += "\"";
         }
         Process.Start(gameExecutable, $"-game \"{outputDataWinPath}\"" + argstring);
+    }
+
+    private static bool IsCacheValid(string outputDataWinPath, string cacheManifestPath, string cacheFingerprint)
+    {
+        if (!File.Exists(outputDataWinPath) || !File.Exists(cacheManifestPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            CacheManifest? manifest = JsonSerializer.Deserialize<CacheManifest>(File.ReadAllText(cacheManifestPath));
+            return manifest?.fingerprint == cacheFingerprint;
+        }
+        catch (Exception ex)
+        {
+            LogWarn($"Could not read cache manifest: {ex.Message}");
+            return false;
+        }
+    }
+
+    private static void WriteCacheManifest(string cacheManifestPath, string cacheFingerprint)
+    {
+        CacheManifest manifest = new()
+        {
+            loaderVersion = LoaderVersion,
+            fingerprint = cacheFingerprint,
+            createdUtc = DateTime.UtcNow.ToString("O")
+        };
+        JsonSerializerOptions options = new() { WriteIndented = true };
+        File.WriteAllText(cacheManifestPath, JsonSerializer.Serialize(manifest, options));
+        LogInfo($"Wrote cache manifest: {cacheManifestPath}");
+    }
+
+    private static string BuildCacheFingerprint(
+        string originalDataWinPath,
+        string gameExecutable,
+        string loclmDirectory,
+        string modsDirectory)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine("loclm-cache-v1");
+        builder.AppendLine("loader-version=" + LoaderVersion);
+
+        AppendFileMetadata(builder, "data.win", originalDataWinPath);
+        AppendFileHash(builder, "game-executable", gameExecutable);
+        AppendFileHash(builder, "loader-exe", Environment.ProcessPath ?? "");
+        AppendFileHash(builder, "loader-dll", Path.Combine(loclmDirectory, "loclm-csharp.dll"));
+        AppendFileHash(builder, "proxy-dll", Path.Combine(Path.GetDirectoryName(originalDataWinPath) ?? "", "version.dll"));
+        AppendFileHash(builder, "blacklist", Path.Combine(loclmDirectory, "blacklist.txt"));
+        AppendFileHash(builder, "whitelist", Path.Combine(loclmDirectory, "whitelist.txt"));
+        AppendDirectoryFingerprint(builder, "mods", modsDirectory);
+
+        using SHA256 sha = SHA256.Create();
+        return Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(builder.ToString())));
+    }
+
+    private static void AppendFileMetadata(StringBuilder builder, string label, string path)
+    {
+        FileInfo file = new(path);
+        if (!file.Exists)
+        {
+            builder.AppendLine($"{label}=missing");
+            return;
+        }
+
+        builder.AppendLine($"{label}=exists");
+        builder.AppendLine($"{label}.length={file.Length}");
+        builder.AppendLine($"{label}.writeUtc={file.LastWriteTimeUtc.Ticks}");
+    }
+
+    private static void AppendFileHash(StringBuilder builder, string label, string path)
+    {
+        FileInfo file = new(path);
+        if (!file.Exists)
+        {
+            builder.AppendLine($"{label}=missing");
+            return;
+        }
+
+        builder.AppendLine($"{label}=exists");
+        builder.AppendLine($"{label}.length={file.Length}");
+        builder.AppendLine($"{label}.sha256={ComputeFileHash(path)}");
+    }
+
+    private static void AppendDirectoryFingerprint(StringBuilder builder, string label, string directory)
+    {
+        if (!Directory.Exists(directory))
+        {
+            builder.AppendLine($"{label}=missing");
+            return;
+        }
+
+        builder.AppendLine($"{label}=exists");
+        string[] files = Directory.GetFiles(directory, "*", SearchOption.AllDirectories)
+            .OrderBy(path => Path.GetRelativePath(directory, path), StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        builder.AppendLine($"{label}.fileCount={files.Length}");
+        foreach (string file in files)
+        {
+            string relativePath = Path.GetRelativePath(directory, file).Replace('\\', '/');
+            builder.AppendLine($"{label}.file={relativePath}");
+            AppendFileHash(builder, $"{label}.{relativePath}", file);
+        }
+    }
+
+    private static string ComputeFileHash(string path)
+    {
+        using SHA256 sha = SHA256.Create();
+        using FileStream stream = File.OpenRead(path);
+        return Convert.ToHexString(sha.ComputeHash(stream));
     }
 
     private static void InstallLoaderAboutButton(
@@ -612,4 +746,11 @@ public class ModInfo
     public string[] authors { get; set; }
     public string description { get; set; }
     public int priority { get; set; }
+}
+
+public class CacheManifest
+{
+    public string loaderVersion { get; set; }
+    public string fingerprint { get; set; }
+    public string createdUtc { get; set; }
 }
