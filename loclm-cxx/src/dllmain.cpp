@@ -1,6 +1,4 @@
-// thanks to Adaf for helping me figure out the proxy dll loading stuff
 
-// ReSharper disable CppZeroConstantCanBeReplacedWithNullptr
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <filesystem>
@@ -72,7 +70,6 @@ bool loadProxy() {
 
 void loadMods() {
     logLine("loadMods: start");
-    // Check if the game is being launched with the -game argument.
     if (hasGameArg || hasLoaded) return;
     hasLoaded = true;
     LPWSTR lpCmdLine = GetCommandLine();
@@ -94,17 +91,14 @@ void loadMods() {
     if (hasGameArg)
         return;
 
-    // End check
 
     std::filesystem::path data_win_path = std::filesystem::path(buffer).parent_path() / "data.win";
 
-    // Prepare to execute the c# executable.
 
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
     ZeroMemory(&si, sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
-    // Execute c# code
     std::filesystem::path csExePath = (game_path.parent_path() / "loclm" / "loclm-csharp.exe");
     #define max_size 5120
     wchar_t lpCommandLine[max_size] = L"\0";
@@ -123,12 +117,11 @@ void loadMods() {
     if(argc > 1){
         for (int i = 1; i < argc; ++i) {
             std::wstring arg(argv[i]);
-            cliString += L'"' + arg + L'"'; // Quote each argument and add to the command line
-            cliString += L' '; // Add a space between arguments
+            cliString += L'"' + arg + L'"'; 
+            cliString += L' '; 
         }
     }
     
-    // Remove the trailing space
     if (!cliString.empty()) {
         cliString.pop_back();
     }

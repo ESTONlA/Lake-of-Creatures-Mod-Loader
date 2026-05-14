@@ -12,14 +12,68 @@ using System.Security.Cryptography;
 using System.Text;
 using UndertaleModLib.Models;
 
-//NOTE TO PEOPLE LOOKING AT THIS CODE
-//Path.Combine() breaks the thing sometimes. I DONT KNOW WHY, IT SHOULDNT BE HAPPENING.
-//It's only SOME of the time too.
-//Anyways, that's why I used the messy "path + "\\" + path + "\\" + path...... method. :(
-
 class LOCLM
 {
     private const string LoaderVersion = "0.3.0-beta";
+    private static readonly SuspiciousPattern[] SuspiciousPatterns =
+    {
+        new(
+            "process_spawn",
+            "Starts external processes or shell commands.",
+            "System.Diagnostics.Process",
+            "Process.Start",
+            "Start-Process",
+            "cmd.exe",
+            "powershell",
+            "wscript.exe",
+            "cscript.exe",
+            "mshta.exe",
+            "rundll32.exe",
+            "regsvr32.exe"),
+        new(
+            "native_code",
+            "Uses native process/memory APIs or P/Invoke.",
+            "DllImport",
+            "DllImportAttribute",
+            "NativeLibrary.Load",
+            "LoadLibrary",
+            "GetProcAddress",
+            "VirtualAlloc",
+            "WriteProcessMemory",
+            "CreateRemoteThread"),
+        new(
+            "network_access",
+            "Uses network clients or sockets.",
+            "System.Net.Http",
+            "HttpClient",
+            "WebClient",
+            "TcpClient",
+            "UdpClient",
+            "System.Net.Sockets.Socket",
+            "DownloadFile",
+            "DownloadString"),
+        new(
+            "destructive_io",
+            "Deletes or overwrites files/directories.",
+            "File.Delete",
+            "Directory.Delete",
+            "DeleteFile",
+            "File.WriteAllBytes",
+            "File.WriteAllText"),
+        new(
+            "registry_access",
+            "Touches the Windows registry.",
+            "Microsoft.Win32.Registry",
+            "RegistryKey"),
+        new(
+            "runtime_code_loading",
+            "Builds or loads code dynamically at runtime.",
+            "Assembly.Load",
+            "Assembly.LoadFrom",
+            "Reflection.Emit",
+            "Convert.FromBase64String",
+            "FromBase64String")
+    };
 
     private static bool SupportsColor => !Console.IsOutputRedirected;
 
@@ -67,6 +121,14 @@ class LOCLM
 
     public static void Main(string[] args)
     {
+        if (args.Length < 2)
+        {
+            LogBanner();
+            LogError("Missing launch arguments.");
+            LogInfo("Usage: loclm-csharp.exe <data.win> <game executable> [game args...]");
+            return;
+        }
+
         void handler(string e, bool isImportant)
         {
             if (isImportant)
@@ -83,15 +145,28 @@ class LOCLM
         }
         string originalDataWinPath = args[0];
         string gameExecutable = args[1];
-        string loclmDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        string outputDataWinPath = Path.Combine(Path.GetDirectoryName(originalDataWinPath), "LOCLM_CACHE_data.win");
-        string cacheManifestPath = Path.Combine(Path.GetDirectoryName(originalDataWinPath), "LOCLM_CACHE_manifest.json");
+        string loclmDirectory = AppContext.BaseDirectory;
+        string dataDirectory = Path.GetDirectoryName(originalDataWinPath) ?? Directory.GetCurrentDirectory();
+        string outputDataWinPath = Path.Combine(dataDirectory, "LOCLM_CACHE_data.win");
+        string cacheManifestPath = Path.Combine(dataDirectory, "LOCLM_CACHE_manifest.json");
         string modsDirectory = Path.Combine(loclmDirectory, "mods");
 
         LogBanner();
         LogInfo($"Game executable: {gameExecutable}");
         LogInfo($"Source data.win: {originalDataWinPath}");
         LogInfo($"Output cache: {outputDataWinPath}");
+
+        if (!File.Exists(originalDataWinPath))
+        {
+            LogError($"data.win was not found: {originalDataWinPath}");
+            return;
+        }
+
+        if (!File.Exists(gameExecutable))
+        {
+            LogError($"Game executable was not found: {gameExecutable}");
+            return;
+        }
 
         if (!Directory.Exists(modsDirectory))
         {
@@ -112,19 +187,21 @@ class LOCLM
         LogStep("Cache is missing or outdated. Regenerating patched data.win.");
 
         LogStep("Opening data.win");
-        FileStream readStream = File.OpenRead(originalDataWinPath);
         LogStep($"Reading unmodified data.win from \"{originalDataWinPath}\"...");
-        UndertaleData unmodifiedData = UndertaleIO.Read(
-            readStream,
-            (UndertaleReader.WarningHandlerDelegate)handler,
-            (UndertaleReader.MessageHandlerDelegate)handler2);
-        readStream.Dispose();
+        UndertaleData unmodifiedData;
+        using (FileStream readStream = File.OpenRead(originalDataWinPath))
+        {
+            unmodifiedData = UndertaleIO.Read(
+                readStream,
+                (UndertaleReader.WarningHandlerDelegate)handler,
+                (UndertaleReader.MessageHandlerDelegate)handler2);
+        }
 
         UndertaleData data = unmodifiedData;
 
         LogStep("Scanning mods directory");
         LogInfo(modsDirectory);
-        string[] modDirectories = Directory.GetDirectories(modsDirectory);
+        string[] modDirectories = Directory.GetDirectories(modsDirectory).OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
         bool hasErrored = false;
         string[] blacklisted = {};
         string[] whitelisted = {};
@@ -139,6 +216,7 @@ class LOCLM
         List<ModInfo> modDataList = new List<ModInfo>();
         List<string> loadedMods = new List<string>();
         List<string> failedMods = new List<string>();
+        List<string> securityBlockedMods = new List<string>();
         for (int i = 0; i < modDirectories.Length; i++)
         {
             string modPath = Path.Combine(modsDirectory, Path.GetFileName(modDirectories[i]));
@@ -148,12 +226,17 @@ class LOCLM
                 string jsonText = File.ReadAllText(Path.Combine(modPath, "modinfo.json"));
                 try
                 {
-                    ModInfo modData = JsonSerializer.Deserialize<ModInfo>(jsonText);
+                    ModInfo? modData = JsonSerializer.Deserialize<ModInfo>(jsonText);
+                    if (modData is null)
+                    {
+                        throw new InvalidOperationException("modinfo.json deserialized to null.");
+                    }
                     modData.modPath = modDirectories[i];
                     modDataList.Add(modData);
-                } catch(Exception e)
+                } catch(Exception ex)
                 {
                     LogError($"Mod has invalid modinfo.json: {modPath}");
+                    LogPlain(ex.Message);
                     failedMods.Add($"{Path.GetFileName(modPath)}: invalid modinfo.json");
                     hasErrored = true;
                     break;
@@ -196,6 +279,18 @@ class LOCLM
             string dllPath = Path.Combine(modPath, Path.GetFileName(prioritizedModInfo[i].modPath) + ".dll");
             if (File.Exists(dllPath))
             {
+                SecurityScanResult securityScan = ScanModSecurity(modPath, dllPath);
+                if (securityScan.IsBlocked)
+                {
+                    string modDisplayName = GetModDisplayName(prioritizedModInfo[i]);
+                    string reason = securityScan.Summary;
+                    LogError($"Security scan blocked \"{modDisplayName}\": {reason}");
+                    LogWarn("This can be a false positive, but it is not always false. The mod was not loaded.");
+                    securityBlockedMods.Add($"{modDisplayName}: {reason}");
+                    failedMods.Add($"{modDisplayName}: blocked by security scan");
+                    continue;
+                }
+
                 UndertaleData backupOfBeforeData = data;
                 LogInfo("DLL: " + dllPath);
                 try
@@ -203,9 +298,13 @@ class LOCLM
                     Assembly assembly = Assembly.LoadFrom(dllPath);
 
                     Type[] types = assembly.GetTypes();
+                    if (types.Length == 0)
+                    {
+                        throw new InvalidOperationException("Assembly has no loadable types.");
+                    }
 
                     Type type = types[0];
-                    MethodInfo loadMethod = type.GetMethod("Load");
+                    MethodInfo? loadMethod = type.GetMethod("Load");
                     for (var t = 0; t < types.Length; t++)
                     {
                         if (loadMethod != null)
@@ -215,7 +314,16 @@ class LOCLM
                         type = types[t];
                         loadMethod = type.GetMethod("Load");
                     }
-                    object instanceOfType = Activator.CreateInstance(type);
+                    if (loadMethod is null)
+                    {
+                        throw new InvalidOperationException("Mod does not expose a public Load method.");
+                    }
+
+                    object? instanceOfType = Activator.CreateInstance(type);
+                    if (instanceOfType is null)
+                    {
+                        throw new InvalidOperationException("Could not create mod entry point instance.");
+                    }
 
                     LogInfo("Number of types: " + types.Length.ToString());
 
@@ -226,11 +334,20 @@ class LOCLM
                 }
                 catch (TargetInvocationException tie)
                 {
-                    Exception e = tie.InnerException;
+                    Exception e = tie.InnerException ?? tie;
                     LogError($"Error while loading \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\": {e.Message}");
                     LogPlain(e.StackTrace ?? "");
                     LogWarn("Skipping to next mod.");
                     failedMods.Add($"{GetModDisplayName(prioritizedModInfo[i])}: {e.Message}");
+                    data = backupOfBeforeData;
+                    hasErrored = true;
+                }
+                catch (Exception ex)
+                {
+                    LogError($"Error while loading \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\": {ex.Message}");
+                    LogPlain(ex.StackTrace ?? "");
+                    LogWarn("Skipping to next mod.");
+                    failedMods.Add($"{GetModDisplayName(prioritizedModInfo[i])}: {ex.Message}");
                     data = backupOfBeforeData;
                     hasErrored = true;
                 }
@@ -244,7 +361,7 @@ class LOCLM
             }
         }
 
-        InstallLoaderAboutButton(data, modsDirectory, loadedMods, failedMods);
+        InstallLoaderAboutButton(data, modsDirectory, loadedMods, failedMods, securityBlockedMods);
 
         if(hasErrored){
             WriteColored(
@@ -261,7 +378,7 @@ If you continue to launch the game, the mods you have added may not work as expe
 ********************
 Continue? (y to continue, anything else to exit.)
 >", ConsoleColor.Yellow, false);
-            string Input = Console.ReadLine();
+            string? Input = Console.ReadLine();
             if(Input != "y")
                 return;
         }
@@ -272,10 +389,11 @@ Continue? (y to continue, anything else to exit.)
             File.Delete(outputDataWinPath);
         }
         LogStep("Creating output stream");
-        FileStream writeStream = File.OpenWrite(outputDataWinPath);
         LogStep($"Writing modified data.win to \"{outputDataWinPath}\"...");
-        UndertaleIO.Write(writeStream, outputData);
-        writeStream.Dispose();
+        using (FileStream writeStream = File.OpenWrite(outputDataWinPath))
+        {
+            UndertaleIO.Write(writeStream, outputData);
+        }
         if (!hasErrored)
         {
             WriteCacheManifest(cacheManifestPath, cacheFingerprint);
@@ -288,6 +406,12 @@ Continue? (y to continue, anything else to exit.)
 
     private static void LaunchGame(string gameExecutable, string outputDataWinPath, string[] args)
     {
+        if (string.Equals(Environment.GetEnvironmentVariable("LOCLM_SKIP_LAUNCH"), "1", StringComparison.Ordinal))
+        {
+            LogWarn("LOCLM_SKIP_LAUNCH=1 is set. Not launching the game.");
+            return;
+        }
+
         string argstring = "";
         for(int i = 2; i < args.Length; i++)
         {
@@ -413,7 +537,8 @@ Continue? (y to continue, anything else to exit.)
         UndertaleData data,
         string modsDirectory,
         IReadOnlyList<string> loadedMods,
-        IReadOnlyList<string> failedMods)
+        IReadOnlyList<string> failedMods,
+        IReadOnlyList<string> securityBlockedMods)
     {
         UndertaleGameObject buttonMenu = data.GameObjects.ByName("obj_button_menu");
         if (buttonMenu is null)
@@ -425,6 +550,12 @@ Continue? (y to continue, anything else to exit.)
         UndertaleGameObject loclmButton = EnsureClonedMenuButton(data, buttonMenu);
         string loadedModsSetup = BuildGmlStringArraySetup("loclm_loaded_mods", "loclm_loaded_mod_count", loadedMods);
         string failedModsSetup = BuildGmlStringArraySetup("loclm_failed_mods", "loclm_failed_mod_count", failedMods);
+        string securityWarningTitle = securityBlockedMods.Count == 1
+            ? "LOCLM blocked a suspicious mod"
+            : "LOCLM blocked suspicious mods";
+        string securityWarningBody = securityBlockedMods.Count == 0
+            ? ""
+            : BuildSecurityWarningBody(securityBlockedMods);
 
         UndertaleModLib.Compiler.CodeImportGroup importGroup = new(data);
 
@@ -437,6 +568,9 @@ btn_yy = 4;
     {
         global.loclm_menu_open = false;
     }
+    global.loclm_security_block_count = " + securityBlockedMods.Count.ToString() + @";
+    global.loclm_security_warning_title = " + QuoteGmlString(securityWarningTitle) + @";
+    global.loclm_security_warning_body = " + QuoteGmlString(securityWarningBody) + @";
     if (global.current_menu == 3 && global.loclm_menu_open == false)
     {
         global.button_unlock[90] = 1;
@@ -608,6 +742,39 @@ event_inherited();
 ");
 
         importGroup.QueueAppend(
+            "gml_Object_obj_ctrl_main_menu_Draw_0",
+            @"
+if (variable_global_exists(""loclm_security_block_count"") && global.loclm_security_block_count > 0)
+{
+    var loclm_about_open = false;
+    if (variable_global_exists(""loclm_menu_open""))
+    {
+        loclm_about_open = global.loclm_menu_open;
+    }
+    if (global.current_menu == 3 && loclm_about_open == false)
+    {
+        var warning_x = 18;
+        var warning_y = room_height - 110;
+        var warning_w = room_width - 36;
+        var warning_h = 70;
+        draw_set_alpha(0.86);
+        draw_set_color(c_black);
+        draw_rectangle(warning_x, warning_y, warning_x + warning_w, warning_y + warning_h, false);
+        draw_set_alpha(1);
+        draw_set_color(global.color_yellow);
+        draw_rectangle(warning_x, warning_y, warning_x + warning_w, warning_y + warning_h, true);
+        draw_set_font(global.font_current);
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_top);
+        draw_set_color(global.color_yellow);
+        draw_text(warning_x + 14, warning_y + 10, string(global.loclm_security_warning_title));
+        draw_set_color(c_white);
+        draw_text_ext(warning_x + 14, warning_y + 30, string(global.loclm_security_warning_body), 16, warning_w - 28);
+        draw_set_alpha(1);
+    }
+}");
+
+        importGroup.QueueAppend(
             "gml_Object_obj_ctrl_main_menu_Step_0",
             @"
 if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == true && global.current_menu != 3)
@@ -686,6 +853,127 @@ if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == tru
         return setup;
     }
 
+    private static string BuildSecurityWarningBody(IReadOnlyList<string> securityBlockedMods)
+    {
+        string firstBlockedMod = TrimForMenu(securityBlockedMods[0], 46);
+        string extra = securityBlockedMods.Count > 1
+            ? $" +{securityBlockedMods.Count - 1} more"
+            : "";
+        return "Blocked: " + firstBlockedMod + extra +
+            "\nThis can be a false positive, but it is not always false. The mod was not loaded.";
+    }
+
+    private static SecurityScanResult ScanModSecurity(string modPath, string dllPath)
+    {
+        List<SecurityFinding> findings = new();
+        ScanFileForSuspiciousPatterns(dllPath, Path.GetFileName(dllPath), findings);
+
+        foreach (string filePath in EnumerateSecurityScanFiles(modPath, dllPath))
+        {
+            if (findings.Count >= SecurityScanResult.MaxFindings)
+            {
+                break;
+            }
+
+            string relativePath = Path.GetRelativePath(modPath, filePath).Replace('\\', '/');
+            ScanFileForSuspiciousPatterns(filePath, relativePath, findings);
+        }
+
+        return new SecurityScanResult(findings);
+    }
+
+    private static IEnumerable<string> EnumerateSecurityScanFiles(string modPath, string mainDllPath)
+    {
+        if (!Directory.Exists(modPath))
+        {
+            yield break;
+        }
+
+        string mainDllFullPath = Path.GetFullPath(mainDllPath);
+        foreach (string filePath in Directory.GetFiles(modPath, "*", SearchOption.AllDirectories)
+                     .OrderBy(path => Path.GetRelativePath(modPath, path), StringComparer.OrdinalIgnoreCase))
+        {
+            string fullPath = Path.GetFullPath(filePath);
+            if (string.Equals(fullPath, mainDllFullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string fileName = Path.GetFileName(filePath);
+            if (IsKnownLoaderDependency(fileName))
+            {
+                continue;
+            }
+
+            string extension = Path.GetExtension(filePath).ToLowerInvariant();
+            if (extension is ".dll" or ".exe" or ".gml" or ".cs" or ".json" or ".txt" or ".cfg" or ".ini")
+            {
+                yield return filePath;
+            }
+        }
+    }
+
+    private static bool IsKnownLoaderDependency(string fileName) =>
+        fileName.Equals("UndertaleModLib.dll", StringComparison.OrdinalIgnoreCase) ||
+        fileName.Equals("Underanalyzer.dll", StringComparison.OrdinalIgnoreCase) ||
+        fileName.Equals("System.Drawing.Common.dll", StringComparison.OrdinalIgnoreCase) ||
+        fileName.Equals("ICSharpCode.SharpZipLib.dll", StringComparison.OrdinalIgnoreCase);
+
+    private static void ScanFileForSuspiciousPatterns(string path, string displayPath, List<SecurityFinding> findings)
+    {
+        const long maxScanBytes = 16 * 1024 * 1024;
+        FileInfo file = new(path);
+        if (!file.Exists || file.Length > maxScanBytes)
+        {
+            return;
+        }
+
+        byte[] bytes = File.ReadAllBytes(path);
+        string asciiText = ExtractPrintableAscii(bytes);
+        string utf16Text = Encoding.Unicode.GetString(bytes);
+        foreach (SuspiciousPattern pattern in SuspiciousPatterns)
+        {
+            if (findings.Count >= SecurityScanResult.MaxFindings)
+            {
+                return;
+            }
+
+            foreach (string needle in pattern.Needles)
+            {
+                if (ContainsIgnoreCase(asciiText, needle) || ContainsIgnoreCase(utf16Text, needle))
+                {
+                    findings.Add(new SecurityFinding(pattern.Id, displayPath, pattern.Description));
+                    break;
+                }
+            }
+        }
+    }
+
+    private static string ExtractPrintableAscii(byte[] bytes)
+    {
+        char[] chars = new char[bytes.Length];
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            byte value = bytes[i];
+            chars[i] = value >= 32 && value <= 126 ? (char)value : ' ';
+        }
+
+        return new string(chars);
+    }
+
+    private static bool ContainsIgnoreCase(string haystack, string needle) =>
+        haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
+
+    private static string TrimForMenu(string value, int maxLength)
+    {
+        if (value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return value[..Math.Max(0, maxLength - 3)] + "...";
+    }
+
     private static string QuoteGmlString(string value) =>
         "\"" + value
             .Replace("\\", "\\\\")
@@ -742,15 +1030,47 @@ if (variable_global_exists(""loclm_menu_open"") && global.loclm_menu_open == tru
 public class ModInfo
 {
     public string modPath = "";
-    public string modName { get; set; }
-    public string[] authors { get; set; }
-    public string description { get; set; }
+    public string modName { get; set; } = "";
+    public string[] authors { get; set; } = Array.Empty<string>();
+    public string description { get; set; } = "";
     public int priority { get; set; }
 }
 
 public class CacheManifest
 {
-    public string loaderVersion { get; set; }
-    public string fingerprint { get; set; }
-    public string createdUtc { get; set; }
+    public string loaderVersion { get; set; } = "";
+    public string fingerprint { get; set; } = "";
+    public string createdUtc { get; set; } = "";
+}
+
+public sealed record SuspiciousPattern(string Id, string Description, params string[] Needles);
+
+public sealed record SecurityFinding(string Rule, string File, string Description);
+
+public sealed class SecurityScanResult
+{
+    public const int MaxFindings = 50;
+
+    public SecurityScanResult(IReadOnlyList<SecurityFinding> findings)
+    {
+        Findings = findings;
+    }
+
+    public IReadOnlyList<SecurityFinding> Findings { get; }
+    public bool IsBlocked => Findings.Count > 0;
+
+    public string Summary
+    {
+        get
+        {
+            if (Findings.Count == 0)
+            {
+                return "clean";
+            }
+
+            SecurityFinding first = Findings[0];
+            string extra = Findings.Count > 1 ? $" (+{Findings.Count - 1} more)" : "";
+            return $"{first.Rule} in {first.File}{extra}";
+        }
+    }
 }
