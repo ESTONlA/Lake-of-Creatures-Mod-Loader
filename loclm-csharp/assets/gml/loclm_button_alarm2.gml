@@ -9,6 +9,7 @@ if (button_index == 90 || button_index == 91 || button_index == 92)
             case 90:
                 if (global.current_menu == 3)
                 {
+                    loclm_runtime_log("LOCLM menu opened");
                     global.loclm_menu_open = true;
                     global.loclm_loaded_scroll = 0;
                     global.loclm_folder_copied_timer = 0;
@@ -36,6 +37,7 @@ __LOADED_MODS_SETUP____FAILED_MODS_SETUP__
                 }
                 break;
             case 91:
+                loclm_runtime_log("LOCLM menu closed");
                 global.loclm_menu_open = false;
                 global.current_menu = 3;
                 global.cursor_index_menu = 0;
@@ -46,6 +48,7 @@ __LOADED_MODS_SETUP____FAILED_MODS_SETUP__
                 main_menu_spawn_buttons();
                 break;
             case 92:
+                loclm_runtime_log("mods path copied to clipboard");
                 clipboard_set_text(__MODS_DIRECTORY__);
                 global.loclm_folder_copied_timer = 120;
                 clicked = false;

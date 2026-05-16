@@ -1,42 +1,36 @@
-  name: Release LOCLM
+name: Release
 
-  on:
-    push:
-      tags:
-        - "v*.*.*"
-    workflow_dispatch:
+on:
+  push:
+    tags:
+      - "v*"
 
-  jobs:
-    release:
-      name: Build and Release Windows x64
-      runs-on: windows-latest
+permissions:
+  contents: write
 
-      permissions:
-        contents: write
+jobs:
+  release:
+    name: Build And Upload Release Assets
+    runs-on: windows-latest
 
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-        - name: Setup .NET
-          uses: actions/setup-dotnet@v4
-          with:
-            dotnet-version: "10.0.x"
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
 
-        - name: Configure CMake
-          run: cmake --preset default
+      - name: Build release zip
+        shell: pwsh
+        run: .\scripts\build-release.ps1 -Configuration Release -ZipName "LOCLM-${{ github.ref_name }}-Windows-x64.zip"
 
-        - name: Build
-          run: cmake --build --preset Debug
-
-        - name: Package release
-          shell: pwsh
-          run: |
-            New-Item -ItemType Directory -Force dist | Out-Null
-            Compress-Archive -Path out/bin/* -DestinationPath dist/LOCLM-Windows-x64.zip -Force
-
-        - name: Create GitHub Release
-          uses: softprops/action-gh-release@v2
-          with:
-            files: dist/LOCLM-Windows-x64.zip
-            generate_release_notes: true
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/LOCLM-${{ github.ref_name }}-Windows-x64.zip
+            dist/checksums.txt
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}

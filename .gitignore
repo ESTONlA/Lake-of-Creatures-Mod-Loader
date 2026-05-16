@@ -1,6 +1,7 @@
 # Build output
 build/
 out/
+dist/
 
 # Temporary test/game copies
 .codex_proxy_test/

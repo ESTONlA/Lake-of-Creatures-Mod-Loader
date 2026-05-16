@@ -1,0 +1,50 @@
+name: PR Build
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Windows Release Build
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build release package
+        shell: pwsh
+        run: .\scripts\build-release.ps1 -Configuration Release -SkipZip
+
+      - name: Verify package layout
+        shell: pwsh
+        run: |
+          $required = @(
+            "out/bin/version.dll",
+            "out/bin/loclm/loclm-csharp.exe",
+            "out/bin/loclm/UndertaleModLib.dll",
+            "out/bin/loclm/mods"
+          )
+
+          foreach ($path in $required) {
+            if (-not (Test-Path $path)) {
+              throw "Missing required release output: $path"
+            }
+          }
+
+          if (Test-Path "out/bin/loclm/cs") {
+            throw "Release output contains trimmed language folder: out/bin/loclm/cs"
+          }
+
+          if (Test-Path "out/bin/loclm/win-x64") {
+            throw "Release output contains accidental self-contained folder: out/bin/loclm/win-x64"
+          }

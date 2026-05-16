@@ -1,7 +1,13 @@
 btn_yy = 4;
+    if (!variable_global_exists("loclm_runtime_log_ready"))
+    {
+        global.loclm_runtime_log_ready = true;
+        loclm_runtime_log("runtime logger initialized");
+    }
     if (!variable_global_exists("loclm_menu_open"))
     {
         global.loclm_menu_open = false;
+        loclm_runtime_log("main menu initialized");
     }
     global.loclm_security_block_count = __SECURITY_BLOCK_COUNT__;
     global.loclm_security_warning_title = __SECURITY_WARNING_TITLE__;

@@ -13,12 +13,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="hooker\src\**\*.cs" />
+    <Content Remove="assets\**\*" />
+    <None Remove="assets\**\*" />
   </ItemGroup>
-  <Target Name="CopyAssets" AfterTargets="AfterBuild">
+  <Target Name="CopyAssets" AfterTargets="CopyFilesToOutputDirectory">
     <ItemGroup>
       <Assets Include="assets/**/*.*" />
     </ItemGroup>
-    <RemoveDir Directories="$(TargetDir)/assets"/>
+    <RemoveDir Directories="$(TargetDir)/assets;$(TargetDir)/code;$(TargetDir)/data;$(TargetDir)/included;$(TargetDir)/sounds;$(TargetDir)/sprites"/>
     <Copy SourceFiles="@(Assets)" DestinationFolder="$(TargetDir)/assets/%(RecursiveDir)" SkipUnchangedFiles="false" />
   </Target>
   <Target Name="CopyIncludes" AfterTargets="AfterBuild">
@@ -26,5 +28,8 @@
       <Assets Include="IncludedFiles/**/*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(Assets)" DestinationFolder="$(TargetDir)/%(RecursiveDir)" SkipUnchangedFiles="false" />
+  </Target>
+  <Target Name="CleanDuplicateAssetRoots" AfterTargets="Build">
+    <RemoveDir Directories="$(TargetDir)/code;$(TargetDir)/data;$(TargetDir)/included;$(TargetDir)/sounds;$(TargetDir)/sprites"/>
   </Target>
 </Project>

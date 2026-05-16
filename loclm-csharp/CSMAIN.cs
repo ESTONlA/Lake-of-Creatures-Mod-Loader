@@ -16,6 +16,11 @@ class LOCLM
 
     private static void WriteColored(string text, ConsoleColor color, bool newline = true)
     {
+        if (newline)
+        {
+            LoaderLogger.WriteRaw(text);
+        }
+
         if (SupportsColor)
         {
             ConsoleColor previous = Console.ForegroundColor;
@@ -50,7 +55,7 @@ class LOCLM
     }
 
     private static void LogInfo(string message) => WriteColored($"[INFO] {message}", ConsoleColor.Gray);
-    private static void LogStep(string message) => WriteColored($"[ • ] {message}", ConsoleColor.Cyan);
+    private static void LogStep(string message) => WriteColored($"[STEP] {message}", ConsoleColor.Cyan);
     private static void LogSuccess(string message) => WriteColored($"[ OK ] {message}", ConsoleColor.Green);
     private static void LogWarn(string message) => WriteColored($"[WARN] {message}", ConsoleColor.Yellow);
     private static void LogError(string message) => WriteColored($"[ERR ] {message}", ConsoleColor.Red);
@@ -88,11 +93,14 @@ class LOCLM
         string cacheManifestPath = Path.Combine(dataDirectory, "LOCLM_CACHE_manifest.json");
         string modsDirectory = Path.Combine(loclmDirectory, "mods");
         string securityAllowlistPath = Path.Combine(loclmDirectory, "security_allowlist.json");
+        string loaderLogPath = Path.Combine(loclmDirectory, "LOCLM.log");
 
+        LoaderLogger.Initialize(loaderLogPath, LoaderVersion);
         LogBanner();
         LogInfo($"Game executable: {gameExecutable}");
         LogInfo($"Source data.win: {originalDataWinPath}");
         LogInfo($"Output cache: {outputDataWinPath}");
+        LogInfo($"Loader log: {loaderLogPath}");
 
         if (!File.Exists(originalDataWinPath))
         {
@@ -186,6 +194,7 @@ class LOCLM
             modDataList.Add(modData);
         }
         List<ModInfo> prioritizedModInfo = modDataList.OrderBy(o => o.priority).ToList();
+        ResourceChangeTracker changeTracker = new();
         for (int i = 0; i < prioritizedModInfo.Count; i++)
         {
             if(hasErrored) break;
@@ -213,6 +222,7 @@ class LOCLM
                 }
 
                 UndertaleData backupOfBeforeData = data;
+                ResourceSnapshot beforeModSnapshot = ResourceSnapshot.Capture(data);
                 LogInfo("DLL: " + dllPath);
                 try
                 {
@@ -250,6 +260,8 @@ class LOCLM
 
                     int audioGroup = 0;
                     loadMethod.Invoke(instanceOfType, new object[] { audioGroup, data });
+                    ResourceSnapshot afterModSnapshot = ResourceSnapshot.Capture(data);
+                    changeTracker.LogChanges(modDisplayName, beforeModSnapshot, afterModSnapshot, LogInfo, LogWarn);
                     LogSuccess($"Loaded mod \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\"");
                     loadedMods.Add(GetModDisplayName(prioritizedModInfo[i]));
                 }
@@ -343,7 +355,14 @@ Continue? (type y and press Enter)
             argstring += args[i];
             argstring += "\"";
         }
-        Process.Start(gameExecutable, $"-game \"{outputDataWinPath}\"" + argstring);
+        Process? process = Process.Start(gameExecutable, $"-game \"{outputDataWinPath}\"" + argstring);
+        if (process is null)
+        {
+            LogError("Game process did not start.");
+            return;
+        }
+
+        LogSuccess($"Game process started. PID: {process.Id}");
     }
 
     private static void WaitForYes()
@@ -499,6 +518,10 @@ Continue? (type y and press Enter)
             : BuildSecurityWarningBody(securityBlockedMods);
 
         UndertaleModLib.Compiler.CodeImportGroup importGroup = new(data);
+
+        importGroup.QueueReplace(
+            "gml_GlobalScript_loclm_runtime_log",
+            LoadGmlAsset("runtime_logger.gml"));
 
         importGroup.QueueFindReplace(
             "gml_GlobalScript_main_menu_spawn_buttons",

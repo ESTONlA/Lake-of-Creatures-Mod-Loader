@@ -1,5 +1,6 @@
 if (variable_global_exists("loclm_menu_open") && global.loclm_menu_open == true && global.current_menu != 3)
 {
+    loclm_runtime_log("LOCLM menu auto-closed because current_menu changed to " + string(global.current_menu));
     global.loclm_menu_open = false;
     with (obj_loclm_button)
     {
@@ -33,6 +34,7 @@ if (variable_global_exists("loclm_menu_open") && global.loclm_menu_open == true)
 
 if (variable_global_exists("loclm_menu_open") && global.loclm_menu_open == true && input_check_pressed("leave"))
 {
+    loclm_runtime_log("LOCLM menu closed by leave input");
     global.loclm_menu_open = false;
     global.current_menu = 3;
     global.cursor_index_menu = 0;
