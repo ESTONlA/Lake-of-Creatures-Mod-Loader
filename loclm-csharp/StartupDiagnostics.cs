@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text.Json;
 
 public static class StartupDiagnostics
@@ -96,10 +95,10 @@ public static class StartupDiagnostics
             loaderVersion = loaderVersion,
             dataWinPath = originalDataWinPath,
             dataWinLength = new FileInfo(originalDataWinPath).Length,
-            dataWinSha256 = ComputeFileHash(originalDataWinPath),
+            dataWinSha256 = HashUtil.ComputeFileSha256(originalDataWinPath),
             gameExecutablePath = gameExecutable,
             gameExecutableLength = new FileInfo(gameExecutable).Length,
-            gameExecutableSha256 = ComputeFileHash(gameExecutable),
+            gameExecutableSha256 = HashUtil.ComputeFileSha256(gameExecutable),
             updatedUtc = DateTime.UtcNow.ToString("O")
         };
 
@@ -107,7 +106,7 @@ public static class StartupDiagnostics
         {
             if (File.Exists(baselinePath))
             {
-                GameBaseline? previous = JsonSerializer.Deserialize<GameBaseline>(File.ReadAllText(baselinePath));
+                GameBaseline? previous = JsonSerializer.Deserialize<GameBaseline>(File.ReadAllText(baselinePath), JsonUtil.CaseInsensitiveOptions);
                 if (previous is not null &&
                     (!string.Equals(previous.dataWinSha256, current.dataWinSha256, StringComparison.OrdinalIgnoreCase) ||
                      !string.Equals(previous.gameExecutableSha256, current.gameExecutableSha256, StringComparison.OrdinalIgnoreCase)))
@@ -121,8 +120,7 @@ public static class StartupDiagnostics
                 info("Created game baseline for future update detection.");
             }
 
-            JsonSerializerOptions options = new() { WriteIndented = true };
-            File.WriteAllText(baselinePath, JsonSerializer.Serialize(current, options));
+            File.WriteAllText(baselinePath, JsonSerializer.Serialize(current, JsonUtil.IndentedOptions));
         }
         catch (Exception ex)
         {
@@ -150,7 +148,7 @@ public static class StartupDiagnostics
             }
 
             string displayPath = Path.GetRelativePath(modsDirectory, expectedMainDll).Replace('\\', '/');
-            AddGrouped(mainDllsByHash, ComputeFileHash(expectedMainDll), displayPath);
+            AddGrouped(mainDllsByHash, HashUtil.ComputeFileSha256(expectedMainDll), displayPath);
             AddGrouped(mainDllsByName, Path.GetFileName(expectedMainDll), displayPath);
         }
 
@@ -307,12 +305,6 @@ public static class StartupDiagnostics
         values.Add(value);
     }
 
-    private static string ComputeFileHash(string path)
-    {
-        using SHA256 sha = SHA256.Create();
-        using FileStream stream = File.OpenRead(path);
-        return Convert.ToHexString(sha.ComputeHash(stream));
-    }
 }
 
 public sealed class GameBaseline

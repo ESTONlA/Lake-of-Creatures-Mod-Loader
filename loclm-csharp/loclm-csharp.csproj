@@ -22,6 +22,7 @@
   <ItemGroup>
     <Content Include="assets\gml\**\*.gml" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="security_allowlist.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="supported_game_builds.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="TrimReleaseOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">

@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -123,8 +122,7 @@ public sealed class ResourceChangeTracker
                 .ToList()
         };
 
-        JsonSerializerOptions options = new() { WriteIndented = true };
-        File.WriteAllText(path, JsonSerializer.Serialize(report, options));
+        File.WriteAllText(path, JsonSerializer.Serialize(report, JsonUtil.IndentedOptions));
     }
 
     private void TrackNamedUsage(
@@ -277,7 +275,7 @@ public sealed class ResourceSnapshot
             builder.AppendLine(instruction.ToString());
         }
 
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+        return HashUtil.ComputeStringSha256(builder.ToString());
     }
 }
 

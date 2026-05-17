@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -242,18 +241,10 @@ public static class SecurityScanner
             FileInfo file = new(filePath);
             builder.AppendLine(relativePath);
             builder.AppendLine(file.Length.ToString());
-            builder.AppendLine(ComputeFileHash(filePath));
+            builder.AppendLine(HashUtil.ComputeFileSha256(filePath));
         }
 
-        byte[] bytes = Encoding.UTF8.GetBytes(builder.ToString());
-        return Convert.ToHexString(SHA256.HashData(bytes));
-    }
-
-    private static string ComputeFileHash(string path)
-    {
-        using SHA256 sha = SHA256.Create();
-        using FileStream stream = File.OpenRead(path);
-        return Convert.ToHexString(sha.ComputeHash(stream));
+        return HashUtil.ComputeStringSha256(builder.ToString());
     }
 
     private static string ExtractPrintableAscii(byte[] bytes)

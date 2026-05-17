@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text.Json;
 
 public sealed class ModLoadOptions
@@ -47,12 +46,7 @@ public sealed class GameCompatibilityInfo
             GameExecutableSha256.StartsWith(normalized, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string ComputeFileHash(string path)
-    {
-        using SHA256 sha = SHA256.Create();
-        using FileStream stream = File.OpenRead(path);
-        return Convert.ToHexString(sha.ComputeHash(stream));
-    }
+    private static string ComputeFileHash(string path) => HashUtil.ComputeFileSha256(path);
 }
 
 public sealed class ModLoadPlan
@@ -83,7 +77,7 @@ public static class ModLoadPlanner
         WarnForDuplicateFolders(modsDirectory, warn);
         WarnForDisabledMods(disabledModsDirectory, info);
 
-        foreach (string modDirectory in Directory.GetDirectories(modsDirectory).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        foreach (string modDirectory in ModScanner.FindModDirectories(modsDirectory))
         {
             string folderName = Path.GetFileName(modDirectory);
             ModStatus status = ModStatus.Create(folderName, modDirectory);
@@ -97,7 +91,7 @@ public static class ModLoadPlanner
                 continue;
             }
 
-            ModManifestResult manifest = ModManifestValidator.Load(modDirectory);
+            ModManifestResult manifest = ModMetadataValidator.Load(modDirectory);
             if (!manifest.Success || manifest.ModInfo is null)
             {
                 status.State = "failed";
@@ -109,6 +103,7 @@ public static class ModLoadPlanner
             ModInfo mod = manifest.ModInfo;
             status.ModName = mod.modName;
             status.Priority = mod.priority;
+            status.TestedOn = mod.testedOn.ToList();
 
             string validationError = ValidateCompatibility(mod, loaderVersion, gameCompatibility);
             if (!string.IsNullOrWhiteSpace(validationError))
@@ -125,6 +120,13 @@ public static class ModLoadPlanner
                 status.CompatibilityStatus = "Disabled by modinfo.json enabled=false.";
                 info($"Skipping \"{mod.modName}\" because modinfo.json has enabled=false.");
                 continue;
+            }
+
+            if (mod.testedOn.Length > 0 && !mod.testedOn.Any(gameCompatibility.MatchesSupportedVersion))
+            {
+                string message = $"\"{mod.modName}\" has not listed this game build in testedOn.";
+                status.Warnings.Add(message);
+                warn(message);
             }
 
             if (whitelist.Count != 0 && !ContainsModId(whitelist, mod))
@@ -146,7 +148,7 @@ public static class ModLoadPlanner
             status.State = "planned";
             status.CompatibilityStatus = "Compatible";
             status.DllPath = Path.Combine(modDirectory, folderName + ".dll");
-            status.DllSha256 = File.Exists(status.DllPath) ? ComputeFileHash(status.DllPath) : "";
+            status.DllSha256 = File.Exists(status.DllPath) ? HashUtil.ComputeFileSha256(status.DllPath) : "";
             status.DllArchitecture = PortableExecutableInspector.GetArchitecture(status.DllPath);
             status.TargetFramework = ModFrameworkInspector.GetTargetFramework(modDirectory, folderName);
             candidates.Add(mod);
@@ -403,12 +405,6 @@ public static class ModLoadPlanner
     private static ModStatus RequireStatus(List<ModStatus> statuses, ModInfo mod) =>
         statuses.First(status => string.Equals(status.FolderName, mod.folderName, StringComparison.OrdinalIgnoreCase));
 
-    private static string ComputeFileHash(string path)
-    {
-        using SHA256 sha = SHA256.Create();
-        using FileStream stream = File.OpenRead(path);
-        return Convert.ToHexString(sha.ComputeHash(stream));
-    }
 }
 
 public static class PortableExecutableInspector
@@ -553,6 +549,7 @@ public sealed class ModStatus
     public string Error { get; set; } = "";
     public string StackTrace { get; set; } = "";
     public List<string> Warnings { get; set; } = new();
+    public List<string> TestedOn { get; set; } = new();
     public List<string> ChangedResources { get; set; } = new();
     public SecurityStatus Security { get; set; } = new();
 
@@ -605,7 +602,6 @@ public static class ModStatusWriter
     public static void WriteAll(string loclmDirectory, string loaderVersion, bool strictMode, IReadOnlyList<ModStatus> statuses)
     {
         Directory.CreateDirectory(loclmDirectory);
-        JsonSerializerOptions options = new() { WriteIndented = true };
         ModStatusReport report = new()
         {
             GeneratedUtc = DateTime.UtcNow.ToString("O"),
@@ -614,17 +610,17 @@ public static class ModStatusWriter
             Mods = statuses.ToList()
         };
 
-        File.WriteAllText(Path.Combine(loclmDirectory, "mod_status.json"), JsonSerializer.Serialize(report, options));
-        WriteList(Path.Combine(loclmDirectory, "loaded_mods.json"), statuses.Where(status => status.State == "loaded"), options);
-        WriteList(Path.Combine(loclmDirectory, "failed_mods.json"), statuses.Where(status => status.State == "failed"), options);
-        WriteList(Path.Combine(loclmDirectory, "blocked_mods.json"), statuses.Where(status => status.State == "blocked"), options);
-        WriteSecurityReport(Path.Combine(loclmDirectory, "security_report.json"), loaderVersion, statuses, options);
+        File.WriteAllText(Path.Combine(loclmDirectory, "mod_status.json"), JsonSerializer.Serialize(report, JsonUtil.IndentedOptions));
+        WriteList(Path.Combine(loclmDirectory, "loaded_mods.json"), statuses.Where(status => status.State == "loaded"));
+        WriteList(Path.Combine(loclmDirectory, "failed_mods.json"), statuses.Where(status => status.State == "failed"));
+        WriteList(Path.Combine(loclmDirectory, "blocked_mods.json"), statuses.Where(status => status.State == "blocked"));
+        WriteSecurityReport(Path.Combine(loclmDirectory, "security_report.json"), loaderVersion, statuses);
     }
 
-    private static void WriteList(string path, IEnumerable<ModStatus> statuses, JsonSerializerOptions options) =>
-        File.WriteAllText(path, JsonSerializer.Serialize(statuses.ToList(), options));
+    private static void WriteList(string path, IEnumerable<ModStatus> statuses) =>
+        File.WriteAllText(path, JsonSerializer.Serialize(statuses.ToList(), JsonUtil.IndentedOptions));
 
-    private static void WriteSecurityReport(string path, string loaderVersion, IReadOnlyList<ModStatus> statuses, JsonSerializerOptions options)
+    private static void WriteSecurityReport(string path, string loaderVersion, IReadOnlyList<ModStatus> statuses)
     {
         SecurityReport report = new()
         {
@@ -643,6 +639,6 @@ public static class ModStatusWriter
             }).ToList()
         };
 
-        File.WriteAllText(path, JsonSerializer.Serialize(report, options));
+        File.WriteAllText(path, JsonSerializer.Serialize(report, JsonUtil.IndentedOptions));
     }
 }

@@ -70,6 +70,7 @@ $requiredOutput = @(
     (Join-Path $outLoclm "loclm-csharp.dll"),
     (Join-Path $outLoclm "loclm-csharp.runtimeconfig.json"),
     (Join-Path $outLoclm "UndertaleModLib.dll"),
+    (Join-Path $outLoclm "supported_game_builds.json"),
     (Join-Path $outLoclm "assets\gml\runtime_logger.gml"),
     (Join-Path $outLoclm "mods"),
     (Join-Path $outLoclm "Logs"),
@@ -106,6 +107,7 @@ try {
         "loclm/loclm-csharp.dll",
         "loclm/loclm-csharp.runtimeconfig.json",
         "loclm/UndertaleModLib.dll",
+        "loclm/supported_game_builds.json",
         "loclm/assets/gml/runtime_logger.gml"
     )
 
