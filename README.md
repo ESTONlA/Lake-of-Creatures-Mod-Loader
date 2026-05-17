@@ -7,6 +7,8 @@ LOCLM is the Lake of Creatures mod loader. It injects through `version.dll`, rew
 - Steam store page: https://store.steampowered.com/app/1808320/Lake_of_Creatures/
 - Steam community page: https://steamcommunity.com/app/1808320
 - Discord: https://discord.com/invite/kQdXU3r2Dn
+- Wiki for creating mods: https://estonla.github.io/LOCLm-modding-wiki/index.html
+
 
 ## Repository Layout
 
