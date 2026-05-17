@@ -64,6 +64,33 @@ if (variable_global_exists("loclm_menu_open") && global.loclm_menu_open == true 
         }
     }
 
+    var conflict_y = section_y + 142;
+    draw_set_color(global.color_yellow);
+    draw_text(right_x, conflict_y, "Possible Conflicts");
+    draw_set_color(c_white);
+    if (!variable_global_exists("loclm_mod_conflict_count") || global.loclm_mod_conflict_count <= 0)
+    {
+        draw_text(right_x + 18, conflict_y + 22, "None");
+    }
+    else
+    {
+        var conflict_visible = min(global.loclm_mod_conflict_count, 4);
+        for (var c = 0; c < conflict_visible; c += 1)
+        {
+            var conflict_text = string(global.loclm_mod_conflicts[c]);
+            if (string_length(conflict_text) > 43)
+            {
+                conflict_text = string_copy(conflict_text, 1, 40) + "...";
+            }
+            draw_text(right_x + 18, conflict_y + 22 + (c * 20), "- " + conflict_text);
+        }
+        if (global.loclm_mod_conflict_count > conflict_visible)
+        {
+            draw_set_color(8421504);
+            draw_text(right_x + 18, conflict_y + 106, "+" + string(global.loclm_mod_conflict_count - conflict_visible) + " more in Logs/mod_conflicts.json");
+        }
+    }
+
     if (variable_global_exists("loclm_folder_copied_timer") && global.loclm_folder_copied_timer > 0)
     {
         draw_set_color(global.color_yellow);

@@ -11,6 +11,8 @@ dist/
 # Template and package artifacts
 mod_template.zip
 *.zip
+LIST.md
+PATCH_NOTES_0.6.0-beta.md
 
 # Managed/native build artifacts
 *.pdb

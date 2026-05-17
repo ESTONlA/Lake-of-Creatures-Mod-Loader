@@ -3,10 +3,20 @@ using System.Text.Json;
 public class ModInfo
 {
     public string modPath = "";
+    public string folderName = "";
     public string modName { get; set; } = "";
     public string[] authors { get; set; } = Array.Empty<string>();
     public string description { get; set; } = "";
     public int priority { get; set; }
+    public bool enabled { get; set; } = true;
+    public string minLoaderVersion { get; set; } = "";
+    public string maxLoaderVersion { get; set; } = "";
+    public string[] supportedGameVersions { get; set; } = Array.Empty<string>();
+    public string[] dependencies { get; set; } = Array.Empty<string>();
+    public string[] optionalDependencies { get; set; } = Array.Empty<string>();
+    public string[] incompatibleWith { get; set; } = Array.Empty<string>();
+    public string[] loadAfter { get; set; } = Array.Empty<string>();
+    public string[] loadBefore { get; set; } = Array.Empty<string>();
 }
 
 public sealed record ModManifestResult(ModInfo? ModInfo, string? Error)
@@ -47,12 +57,21 @@ public static class ModManifestValidator
         }
 
         info.modPath = modPath;
+        info.folderName = folderName;
         info.modName = info.modName?.Trim() ?? "";
         info.description = info.description?.Trim() ?? "";
         info.authors = info.authors?
             .Where(author => !string.IsNullOrWhiteSpace(author))
             .Select(author => author.Trim())
             .ToArray() ?? Array.Empty<string>();
+        info.minLoaderVersion = info.minLoaderVersion?.Trim() ?? "";
+        info.maxLoaderVersion = info.maxLoaderVersion?.Trim() ?? "";
+        info.supportedGameVersions = CleanStringArray(info.supportedGameVersions);
+        info.dependencies = CleanStringArray(info.dependencies);
+        info.optionalDependencies = CleanStringArray(info.optionalDependencies);
+        info.incompatibleWith = CleanStringArray(info.incompatibleWith);
+        info.loadAfter = CleanStringArray(info.loadAfter);
+        info.loadBefore = CleanStringArray(info.loadBefore);
 
         if (string.IsNullOrWhiteSpace(info.modName))
         {
@@ -92,6 +111,13 @@ public static class ModManifestValidator
 
         return new ModManifestResult(info, null);
     }
+
+    private static string[] CleanStringArray(string[]? values) =>
+        values?
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray() ?? Array.Empty<string>();
 
     private static ModManifestResult Invalid(string error) => new(null, error);
 }

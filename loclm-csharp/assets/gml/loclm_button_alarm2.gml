@@ -13,7 +13,7 @@ if (button_index == 90 || button_index == 91 || button_index == 92)
                     global.loclm_menu_open = true;
                     global.loclm_loaded_scroll = 0;
                     global.loclm_folder_copied_timer = 0;
-__LOADED_MODS_SETUP____FAILED_MODS_SETUP__
+__LOADED_MODS_SETUP____FAILED_MODS_SETUP____CONFLICTS_SETUP__
                     global.cursor_index_menu = 0;
                     with (obj_button_menu)
                     {

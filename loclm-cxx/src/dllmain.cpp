@@ -7,6 +7,8 @@
 
 constexpr wchar_t PROXY_DLL[] = L"version.dll";
 constexpr wchar_t LOADER_EXE[] = L"loclm-csharp.exe";
+constexpr wchar_t LOCLM_DIR[] = L"loclm";
+constexpr wchar_t LOGS_DIR[] = L"Logs";
 constexpr wchar_t LOG_FILE[] = L"LOCLM_proxy.log";
 
 #define DLL_PROXY_ORIGINAL(name) original_##name
@@ -26,6 +28,18 @@ std::wstring getProcessPath()
 {
     std::vector<wchar_t> buffer(32768);
     DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+    if (length == 0 || length >= buffer.size())
+    {
+        return L"";
+    }
+
+    return std::wstring(buffer.data(), length);
+}
+
+std::wstring getModulePath(HMODULE module)
+{
+    std::vector<wchar_t> buffer(32768);
+    DWORD length = GetModuleFileNameW(module, buffer.data(), static_cast<DWORD>(buffer.size()));
     if (length == 0 || length >= buffer.size())
     {
         return L"";
@@ -79,11 +93,31 @@ std::string wideToUtf8(const std::wstring& value)
     return result;
 }
 
+void ensureDirectory(const std::wstring& path)
+{
+    if (path.empty())
+    {
+        return;
+    }
+
+    DWORD attributes = GetFileAttributesW(path.c_str());
+    if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+    {
+        return;
+    }
+
+    CreateDirectoryW(path.c_str(), nullptr);
+}
+
 void logLine(const std::wstring& message)
 {
     std::wstring processPath = getProcessPath();
     std::wstring processDir = getDirectory(processPath);
-    std::wstring logPath = joinPath(processDir, LOG_FILE);
+    std::wstring loclmDir = joinPath(processDir, LOCLM_DIR);
+    std::wstring logsDir = joinPath(loclmDir, LOGS_DIR);
+    ensureDirectory(loclmDir);
+    ensureDirectory(logsDir);
+    std::wstring logPath = joinPath(logsDir, LOG_FILE);
 
     HANDLE file = CreateFileW(
         logPath.c_str(),
@@ -300,6 +334,21 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 
     DisableThreadLibraryCalls(module);
     logLine(L"DllMain: process attach");
+
+    std::wstring processDir = getDirectory(getProcessPath());
+    std::wstring proxyDir = getDirectory(getModulePath(module));
+    if (!processDir.empty() &&
+        !proxyDir.empty() &&
+        _wcsicmp(processDir.c_str(), proxyDir.c_str()) != 0)
+    {
+        std::wstring message = L"version.dll is not next to the game executable.\n\nGame folder:\n" +
+            processDir +
+            L"\n\nLoaded version.dll from:\n" +
+            proxyDir +
+            L"\n\nInstall version.dll beside LakeOfCreatures.exe.";
+        logLine(L"DllMain: " + message);
+        showLaunchFailure(message);
+    }
 
     if (!loadProxy())
     {

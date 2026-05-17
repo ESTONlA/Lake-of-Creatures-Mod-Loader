@@ -10,9 +10,11 @@ using UndertaleModLib.Models;
 
 class LOCLM
 {
-    private const string LoaderVersion = "0.4.0-beta";
+    private const string LoaderVersion = "0.6.0-beta";
 
     private static bool SupportsColor => !Console.IsOutputRedirected;
+    private static readonly List<string> WarningSummary = new();
+    private static readonly List<string> ErrorSummary = new();
 
     private static void WriteColored(string text, ConsoleColor color, bool newline = true)
     {
@@ -57,8 +59,17 @@ class LOCLM
     private static void LogInfo(string message) => WriteColored($"[INFO] {message}", ConsoleColor.Gray);
     private static void LogStep(string message) => WriteColored($"[STEP] {message}", ConsoleColor.Cyan);
     private static void LogSuccess(string message) => WriteColored($"[ OK ] {message}", ConsoleColor.Green);
-    private static void LogWarn(string message) => WriteColored($"[WARN] {message}", ConsoleColor.Yellow);
-    private static void LogError(string message) => WriteColored($"[ERR ] {message}", ConsoleColor.Red);
+    private static void LogWarn(string message)
+    {
+        WarningSummary.Add(message);
+        WriteColored($"[WARN] {message}", ConsoleColor.Yellow);
+    }
+
+    private static void LogError(string message)
+    {
+        ErrorSummary.Add(message);
+        WriteColored($"[ERR ] {message}", ConsoleColor.Red);
+    }
     private static void LogPlain(string message) => WriteColored(message, ConsoleColor.White);
 
     public static void Main(string[] args)
@@ -90,11 +101,17 @@ class LOCLM
         string loclmDirectory = AppContext.BaseDirectory;
         string dataDirectory = Path.GetDirectoryName(originalDataWinPath) ?? Directory.GetCurrentDirectory();
         string outputDataWinPath = Path.Combine(dataDirectory, "LOCLM_CACHE_data.win");
-        string cacheManifestPath = Path.Combine(dataDirectory, "LOCLM_CACHE_manifest.json");
         string modsDirectory = Path.Combine(loclmDirectory, "mods");
+        string logsDirectory = Path.Combine(loclmDirectory, "Logs");
+        string cacheManifestPath = Path.Combine(logsDirectory, "LOCLM_CACHE_manifest.json");
+        string disabledModsDirectory = Path.Combine(loclmDirectory, "disabled_mods");
+        string quarantineDirectory = Path.Combine(loclmDirectory, "quarantine");
         string securityAllowlistPath = Path.Combine(loclmDirectory, "security_allowlist.json");
-        string loaderLogPath = Path.Combine(loclmDirectory, "LOCLM.log");
+        string loaderLogPath = Path.Combine(logsDirectory, "LOCLM.log");
+        string conflictReportPath = Path.Combine(logsDirectory, "mod_conflicts.json");
+        ModLoadOptions loadOptions = ModLoadOptions.FromEnvironment();
 
+        Directory.CreateDirectory(logsDirectory);
         LoaderLogger.Initialize(loaderLogPath, LoaderVersion);
         LogBanner();
         LogInfo($"Game executable: {gameExecutable}");
@@ -119,12 +136,26 @@ class LOCLM
             Directory.CreateDirectory(modsDirectory);
             LogWarn($"Created missing mods folder: {modsDirectory}");
         }
+        Directory.CreateDirectory(disabledModsDirectory);
+        Directory.CreateDirectory(quarantineDirectory);
 
+        StartupDiagnostics.Run(
+            originalDataWinPath,
+            gameExecutable,
+            loclmDirectory,
+            logsDirectory,
+            modsDirectory,
+            LoaderVersion,
+            LogInfo,
+            LogWarn);
+
+        GameCompatibilityInfo gameCompatibility = GameCompatibilityInfo.Create(originalDataWinPath, gameExecutable);
         SecurityAllowlist securityAllowlist = SecurityAllowlist.Load(securityAllowlistPath, LogWarn);
         string cacheFingerprint = BuildCacheFingerprint(originalDataWinPath, gameExecutable, loclmDirectory, modsDirectory);
         if (IsCacheValid(outputDataWinPath, cacheManifestPath, cacheFingerprint))
         {
             LogSuccess("Cache is up to date. Skipping regeneration.");
+            WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, gameCompatibility, false);
             LogStep("Launching game");
             LogInfo("Executable: " + gameExecutable);
             LaunchGame(gameExecutable, outputDataWinPath, args);
@@ -148,7 +179,6 @@ class LOCLM
 
         LogStep("Scanning mods directory");
         LogInfo(modsDirectory);
-        string[] modDirectories = Directory.GetDirectories(modsDirectory).OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
         bool hasErrored = false;
         string[] blacklisted = {};
         string[] whitelisted = {};
@@ -164,47 +194,46 @@ class LOCLM
         List<string> loadedMods = new List<string>();
         List<string> failedMods = new List<string>();
         List<string> securityBlockedMods = new List<string>();
-        for (int i = 0; i < modDirectories.Length; i++)
+        ModLoadPlan loadPlan = ModLoadPlanner.Build(
+            modsDirectory,
+            disabledModsDirectory,
+            LoaderVersion,
+            gameCompatibility,
+            whitelisted,
+            blacklisted,
+            LogInfo,
+            LogWarn,
+            LogError);
+        LogInfo(loadOptions.StrictMode
+            ? "Mod failure mode: strict. First load failure stops remaining mods."
+            : "Mod failure mode: relaxed. Failed mods are skipped when safe.");
+        modDataList.AddRange(loadPlan.Mods);
+        foreach (ModStatus status in loadPlan.Statuses.Where(status => status.State is "failed" or "blocked"))
         {
-            string modPath = Path.Combine(modsDirectory, Path.GetFileName(modDirectories[i]));
-            LogStep($"Reading mod metadata from \"{modPath}\"");
-
-            ModManifestResult manifest = ModManifestValidator.Load(modPath);
-            if (!manifest.Success || manifest.ModInfo is null)
-            {
-                string error = manifest.Error ?? "invalid modinfo.json.";
-                LogError($"Skipping mod \"{Path.GetFileName(modPath)}\": {error}");
-                failedMods.Add($"{Path.GetFileName(modPath)}: {error}");
-                continue;
-            }
-
-            ModInfo modData = manifest.ModInfo;
-            if (whitelisted.Length != 0 && !(Array.IndexOf(whitelisted, modData.modName) >= 0))
-            {
-                LogWarn($"Skipping \"{modData.modName}\" because it is not in whitelist.txt.");
-                continue;
-            }
-
-            if (Array.IndexOf(blacklisted, modData.modName) >= 0)
-            {
-                LogWarn($"Skipping \"{modData.modName}\" because it is in blacklist.txt.");
-                continue;
-            }
-
-            modDataList.Add(modData);
+            failedMods.Add($"{status.ModName}: {status.Error}".TrimEnd(':', ' '));
         }
-        List<ModInfo> prioritizedModInfo = modDataList.OrderBy(o => o.priority).ToList();
+
+        List<ModInfo> prioritizedModInfo = loadPlan.Mods;
         ResourceChangeTracker changeTracker = new();
         for (int i = 0; i < prioritizedModInfo.Count; i++)
         {
-            if(hasErrored) break;
+            if (hasErrored && loadOptions.StrictMode) break;
             string modPath =  Path.Combine(modsDirectory, Path.GetFileName(prioritizedModInfo[i].modPath));
+            string modDisplayName = GetModDisplayName(prioritizedModInfo[i]);
+            ModStatus modStatus = FindStatus(loadPlan.Statuses, prioritizedModInfo[i]);
             LogStep($"Loading mod \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\"");
             string dllPath = Path.Combine(modPath, Path.GetFileName(prioritizedModInfo[i].modPath) + ".dll");
             if (File.Exists(dllPath))
             {
+                Stopwatch loadStopwatch = Stopwatch.StartNew();
                 SecurityScanResult securityScan = SecurityScanner.ScanMod(modPath, dllPath, securityAllowlist);
-                string modDisplayName = GetModDisplayName(prioritizedModInfo[i]);
+                modStatus.Security = new SecurityStatus
+                {
+                    Hash = securityScan.ModHash,
+                    Result = securityScan.IsBlocked ? "blocked" : securityScan.IsAllowedByAllowlist ? "allowlisted" : "clean",
+                    Summary = securityScan.Summary,
+                    Findings = securityScan.Findings.ToList()
+                };
                 LogInfo($"\"{modDisplayName}\" Hash \"{securityScan.ModHash}\"");
                 if (securityScan.IsBlocked)
                 {
@@ -214,6 +243,10 @@ class LOCLM
                     LogWarn("This can be a false positive, but it is not always false. The mod was not loaded.");
                     securityBlockedMods.Add($"{modDisplayName}: {reason}");
                     failedMods.Add($"{modDisplayName}: blocked by security scan");
+                    modStatus.State = "blocked";
+                    modStatus.Error = "Blocked by security scan: " + reason;
+                    modStatus.LoadDurationMs = loadStopwatch.ElapsedMilliseconds;
+                    WriteQuarantineMarker(quarantineDirectory, modDisplayName, modPath, securityScan.ModHash, reason);
                     continue;
                 }
                 if (securityScan.IsAllowedByAllowlist)
@@ -261,7 +294,17 @@ class LOCLM
                     int audioGroup = 0;
                     loadMethod.Invoke(instanceOfType, new object[] { audioGroup, data });
                     ResourceSnapshot afterModSnapshot = ResourceSnapshot.Capture(data);
-                    changeTracker.LogChanges(modDisplayName, beforeModSnapshot, afterModSnapshot, LogInfo, LogWarn);
+                    ResourceDelta delta = changeTracker.LogChanges(modDisplayName, beforeModSnapshot, afterModSnapshot, data, LogInfo, LogWarn);
+                    loadStopwatch.Stop();
+                    modStatus.State = "loaded";
+                    modStatus.LoadDurationMs = loadStopwatch.ElapsedMilliseconds;
+                    modStatus.ChangedResources = delta.Describe().ToList();
+                    if (loadStopwatch.Elapsed > loadOptions.SlowLoadWarningThreshold)
+                    {
+                        string warning = $"Mod load timeout warning: \"{modDisplayName}\" took {loadStopwatch.ElapsedMilliseconds} ms to load.";
+                        LogWarn(warning);
+                        modStatus.Warnings.Add(warning);
+                    }
                     LogSuccess($"Loaded mod \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\"");
                     loadedMods.Add(GetModDisplayName(prioritizedModInfo[i]));
                 }
@@ -269,18 +312,30 @@ class LOCLM
                 {
                     Exception e = tie.InnerException ?? tie;
                     LogError($"Error while loading \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\": {e.Message}");
+                    LogError($"This mod caused the patch failure: {modDisplayName}");
                     LogPlain(e.StackTrace ?? "");
-                    LogWarn("Skipping to next mod.");
+                    LogWarn(loadOptions.StrictMode ? "Strict mode is enabled. Stopping mod loading." : "Relaxed mode is enabled. Skipping to next mod.");
                     failedMods.Add($"{GetModDisplayName(prioritizedModInfo[i])}: {e.Message}");
+                    loadStopwatch.Stop();
+                    modStatus.State = "failed";
+                    modStatus.Error = e.Message;
+                    modStatus.StackTrace = e.StackTrace ?? "";
+                    modStatus.LoadDurationMs = loadStopwatch.ElapsedMilliseconds;
                     data = backupOfBeforeData;
                     hasErrored = true;
                 }
                 catch (Exception ex)
                 {
                     LogError($"Error while loading \"{Path.GetFileName(prioritizedModInfo[i].modPath)}\": {ex.Message}");
+                    LogError($"This mod caused the patch failure: {modDisplayName}");
                     LogPlain(ex.StackTrace ?? "");
-                    LogWarn("Skipping to next mod.");
+                    LogWarn(loadOptions.StrictMode ? "Strict mode is enabled. Stopping mod loading." : "Relaxed mode is enabled. Skipping to next mod.");
                     failedMods.Add($"{GetModDisplayName(prioritizedModInfo[i])}: {ex.Message}");
+                    loadStopwatch.Stop();
+                    modStatus.State = "failed";
+                    modStatus.Error = ex.Message;
+                    modStatus.StackTrace = ex.StackTrace ?? "";
+                    modStatus.LoadDurationMs = loadStopwatch.ElapsedMilliseconds;
                     data = backupOfBeforeData;
                     hasErrored = true;
                 }
@@ -288,13 +343,27 @@ class LOCLM
             else
             {
                 LogError($"DLL file does not exist: {dllPath}");
-                LogWarn("Skipping to next mod.");
+                LogWarn(loadOptions.StrictMode ? "Strict mode is enabled. Stopping mod loading." : "Relaxed mode is enabled. Skipping to next mod.");
                 failedMods.Add($"{GetModDisplayName(prioritizedModInfo[i])}: missing DLL");
+                modStatus.State = "failed";
+                modStatus.Error = "Missing DLL: " + dllPath;
                 hasErrored = true;
             }
         }
 
-        InstallLoaderAboutButton(data, modsDirectory, loadedMods, failedMods, securityBlockedMods);
+        ModStatusWriter.WriteAll(logsDirectory, LoaderVersion, loadOptions.StrictMode, loadPlan.Statuses);
+        changeTracker.WriteReport(conflictReportPath);
+        IReadOnlyList<string> modConflicts = changeTracker.BuildMenuSummaries();
+        if (changeTracker.Conflicts.Count > 0)
+        {
+            LogWarn($"Detected {changeTracker.Conflicts.Count} possible mod conflict(s). Report: {conflictReportPath}");
+        }
+        else
+        {
+            LogSuccess($"No mod conflicts detected. Report: {conflictReportPath}");
+        }
+
+        InstallLoaderAboutButton(data, modsDirectory, loadedMods, failedMods, securityBlockedMods, modConflicts);
 
         if(hasErrored){
             WriteColored(
@@ -330,9 +399,136 @@ Continue? (type y and press Enter)
             WriteCacheManifest(cacheManifestPath, cacheFingerprint);
         }
         LogSuccess("Done.");
+        WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, gameCompatibility, hasErrored);
         LogStep("Launching game");
         LogInfo("Executable: " + gameExecutable);
         LaunchGame(gameExecutable, outputDataWinPath, args);
+    }
+
+    private static void WriteRunSummary(
+        string logsDirectory,
+        string originalDataWinPath,
+        string gameExecutable,
+        string outputDataWinPath,
+        string cacheManifestPath,
+        GameCompatibilityInfo gameCompatibility,
+        bool hadPatchError)
+    {
+        Directory.CreateDirectory(logsDirectory);
+        string summaryPath = Path.Combine(logsDirectory, "LOCLM_summary.txt");
+        StringBuilder builder = new();
+        builder.AppendLine("LOCLM troubleshooting summary");
+        builder.AppendLine("============================");
+        builder.AppendLine("Created UTC: " + DateTime.UtcNow.ToString("O"));
+        builder.AppendLine("Loader version: " + LoaderVersion);
+        builder.AppendLine("OS version: " + Environment.OSVersion);
+        builder.AppendLine(".NET version: " + Environment.Version);
+        builder.AppendLine("Install path: " + AppContext.BaseDirectory);
+        builder.AppendLine("Game executable: " + gameExecutable);
+        builder.AppendLine("Game exe hash: " + gameCompatibility.GameExecutableSha256);
+        builder.AppendLine("data.win: " + originalDataWinPath);
+        builder.AppendLine("data.win hash: " + gameCompatibility.DataWinSha256);
+        builder.AppendLine("Cache file: " + outputDataWinPath);
+        builder.AppendLine("Cache manifest: " + cacheManifestPath);
+        builder.AppendLine("Patch error this run: " + hadPatchError);
+        builder.AppendLine();
+        AppendSummarySection(builder, "Warnings", WarningSummary);
+        AppendSummarySection(builder, "Errors", ErrorSummary);
+        builder.AppendLine("Common next steps");
+        builder.AppendLine("-----------------");
+        foreach (string step in BuildNextSteps())
+        {
+            builder.AppendLine("- " + step);
+        }
+
+        File.WriteAllText(summaryPath, builder.ToString());
+
+        LogPlain("");
+        WriteColored("LOCLM final summary", ConsoleColor.Cyan);
+        LogInfo($"Support logs folder: {logsDirectory}");
+        LogInfo($"Summary file: {summaryPath}");
+        LogInfo($"Warnings this run: {WarningSummary.Count}");
+        LogInfo($"Errors this run: {ErrorSummary.Count}");
+        if (WarningSummary.Count > 0)
+        {
+            LogPlain("Recent warnings:");
+            foreach (string warning in WarningSummary.TakeLast(5))
+            {
+                WriteColored("  - " + warning, ConsoleColor.Yellow);
+            }
+        }
+
+        if (ErrorSummary.Count > 0)
+        {
+            LogPlain("Recent errors:");
+            foreach (string error in ErrorSummary.TakeLast(5))
+            {
+                WriteColored("  - " + error, ConsoleColor.Red);
+            }
+            LogPlain("Next steps:");
+            foreach (string step in BuildNextSteps())
+            {
+                LogPlain("  - " + step);
+            }
+        }
+    }
+
+    private static void AppendSummarySection(StringBuilder builder, string title, IReadOnlyList<string> values)
+    {
+        builder.AppendLine(title);
+        builder.AppendLine(new string('-', title.Length));
+        builder.AppendLine("Count: " + values.Count);
+        foreach (string value in values)
+        {
+            builder.AppendLine("- " + value);
+        }
+
+        builder.AppendLine();
+    }
+
+    private static IReadOnlyList<string> BuildNextSteps()
+    {
+        List<string> steps = new();
+        string combined = string.Join("\n", ErrorSummary.Concat(WarningSummary));
+        if (combined.Contains("data.win", StringComparison.OrdinalIgnoreCase))
+        {
+            steps.Add("Verify the game files in Steam, then delete LOCLM_CACHE_data.win and launch again.");
+        }
+        if (combined.Contains("version.dll", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("proxy", StringComparison.OrdinalIgnoreCase))
+        {
+            steps.Add("Make sure version.dll is in the same folder as LakeOfCreatures.exe.");
+        }
+        if (combined.Contains("Missing DLL", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("dependency", StringComparison.OrdinalIgnoreCase))
+        {
+            steps.Add("Reinstall the affected mod as a full folder, not only the mod DLL.");
+        }
+        if (combined.Contains("security scan", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("blocked", StringComparison.OrdinalIgnoreCase))
+        {
+            steps.Add("Remove the blocked mod, or only allowlist its hash if you trust the mod author and understand the risk.");
+        }
+        if (combined.Contains(".NET", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("TargetFramework", StringComparison.OrdinalIgnoreCase))
+        {
+            steps.Add("Install the Microsoft .NET 10 Desktop Runtime x64, then try again.");
+        }
+        if (combined.Contains("conflict", StringComparison.OrdinalIgnoreCase))
+        {
+            steps.Add("Open Logs/mod_conflicts.json and test the conflicting mods one at a time.");
+        }
+        if (steps.Count == 0)
+        {
+            steps.Add("Zip the whole loclm/Logs folder and share it with the mod/loader developer.");
+            steps.Add("If the game does not open at all, check loclm/Logs/LOCLM_proxy.log first.");
+        }
+        else
+        {
+            steps.Add("Zip the whole loclm/Logs folder if you need support.");
+        }
+
+        return steps;
     }
 
     private static void LaunchGame(string gameExecutable, string outputDataWinPath, string[] args)
@@ -498,7 +694,8 @@ Continue? (type y and press Enter)
         string modsDirectory,
         IReadOnlyList<string> loadedMods,
         IReadOnlyList<string> failedMods,
-        IReadOnlyList<string> securityBlockedMods)
+        IReadOnlyList<string> securityBlockedMods,
+        IReadOnlyList<string> modConflicts)
     {
         UndertaleGameObject buttonMenu = data.GameObjects.ByName("obj_button_menu");
         if (buttonMenu is null)
@@ -510,6 +707,7 @@ Continue? (type y and press Enter)
         UndertaleGameObject loclmButton = EnsureClonedMenuButton(data, buttonMenu);
         string loadedModsSetup = BuildGmlStringArraySetup("loclm_loaded_mods", "loclm_loaded_mod_count", loadedMods);
         string failedModsSetup = BuildGmlStringArraySetup("loclm_failed_mods", "loclm_failed_mod_count", failedMods);
+        string conflictsSetup = BuildGmlStringArraySetup("loclm_mod_conflicts", "loclm_mod_conflict_count", modConflicts);
         string securityWarningTitle = securityBlockedMods.Count == 1
             ? "LOCLM blocked a suspicious mod"
             : "LOCLM blocked suspicious mods";
@@ -546,6 +744,7 @@ Continue? (type y and press Enter)
                 "loclm_button_alarm2.gml",
                 ("__LOADED_MODS_SETUP__", loadedModsSetup),
                 ("__FAILED_MODS_SETUP__", failedModsSetup),
+                ("__CONFLICTS_SETUP__", conflictsSetup),
                 ("__MODS_DIRECTORY__", QuoteGmlString(modsDirectory))));
 
         importGroup.QueueReplace(
@@ -594,6 +793,34 @@ Continue? (type y and press Enter)
         }
 
         return "Unknown Mod";
+    }
+
+    private static ModStatus FindStatus(IReadOnlyList<ModStatus> statuses, ModInfo modInfo) =>
+        statuses.First(status => string.Equals(status.FolderName, modInfo.folderName, StringComparison.OrdinalIgnoreCase));
+
+    private static void WriteQuarantineMarker(
+        string quarantineDirectory,
+        string modDisplayName,
+        string modPath,
+        string modHash,
+        string reason)
+    {
+        Directory.CreateDirectory(quarantineDirectory);
+        string safeName = string.Join("_", modDisplayName.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+        if (string.IsNullOrWhiteSpace(safeName))
+        {
+            safeName = "blocked_mod";
+        }
+
+        string markerPath = Path.Combine(quarantineDirectory, safeName + ".blocked.txt");
+        File.WriteAllText(
+            markerPath,
+            "LOCLM blocked this mod during security scanning." + Environment.NewLine +
+            "Mod: " + modDisplayName + Environment.NewLine +
+            "Path: " + modPath + Environment.NewLine +
+            "Hash: " + modHash + Environment.NewLine +
+            "Reason: " + reason + Environment.NewLine +
+            "Created UTC: " + DateTime.UtcNow.ToString("O") + Environment.NewLine);
     }
 
     private static string BuildGmlStringArraySetup(string arrayName, string countName, IReadOnlyList<string> values)
