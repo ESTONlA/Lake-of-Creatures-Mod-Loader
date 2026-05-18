@@ -39,24 +39,26 @@ public static class CacheManager
         string originalDataWinPath,
         string gameExecutable,
         string loclmDirectory,
-        string modsDirectory)
+        string modsDirectory,
+        FileHashCache? hashCache = null)
     {
         StringBuilder builder = new();
         builder.AppendLine("loclm-cache-v1");
         builder.AppendLine("loader-version=" + LoaderConstants.LoaderVersion);
         builder.AppendLine("menu-injection-version=" + LoaderConstants.MenuInjectionVersion);
+        builder.AppendLine("logs=excluded");
 
         AppendFileMetadata(builder, "data.win", originalDataWinPath);
-        AppendFileHash(builder, "game-executable", gameExecutable);
-        AppendFileHash(builder, "loader-exe", Environment.ProcessPath ?? "");
-        AppendFileHash(builder, "loader-dll", Path.Combine(loclmDirectory, "loclm-csharp.dll"));
-        AppendFileHash(builder, "proxy-dll", Path.Combine(Path.GetDirectoryName(originalDataWinPath) ?? "", "version.dll"));
-        AppendFileHash(builder, "blacklist", Path.Combine(loclmDirectory, "blacklist.txt"));
-        AppendFileHash(builder, "whitelist", Path.Combine(loclmDirectory, "whitelist.txt"));
-        AppendFileHash(builder, "security-allowlist", Path.Combine(loclmDirectory, "security_allowlist.json"));
-        AppendFileHash(builder, "supported-game-builds", Path.Combine(loclmDirectory, "supported_game_builds.json"));
-        AppendDirectoryFingerprint(builder, "gml-assets", Path.Combine(loclmDirectory, "assets", "gml"));
-        AppendDirectoryFingerprint(builder, "mods", modsDirectory);
+        AppendFileHash(builder, "game-executable", gameExecutable, hashCache);
+        AppendFileHash(builder, "loader-exe", Environment.ProcessPath ?? "", hashCache);
+        AppendFileHash(builder, "loader-dll", Path.Combine(loclmDirectory, "loclm-csharp.dll"), hashCache);
+        AppendFileHash(builder, "proxy-dll", Path.Combine(Path.GetDirectoryName(originalDataWinPath) ?? "", "version.dll"), hashCache);
+        AppendFileHash(builder, "blacklist", Path.Combine(loclmDirectory, "blacklist.txt"), hashCache);
+        AppendFileHash(builder, "whitelist", Path.Combine(loclmDirectory, "whitelist.txt"), hashCache);
+        AppendFileHash(builder, "security-allowlist", Path.Combine(loclmDirectory, "security_allowlist.json"), hashCache);
+        AppendFileHash(builder, "supported-game-builds", Path.Combine(loclmDirectory, "supported_game_builds.json"), hashCache);
+        AppendDirectoryFingerprint(builder, "gml-assets", Path.Combine(loclmDirectory, "assets", "gml"), hashCache);
+        AppendDirectoryFingerprint(builder, "mods", modsDirectory, hashCache);
 
         return HashUtil.ComputeStringSha256(builder.ToString());
     }
@@ -75,7 +77,7 @@ public static class CacheManager
         builder.AppendLine($"{label}.writeUtc={file.LastWriteTimeUtc.Ticks}");
     }
 
-    private static void AppendFileHash(StringBuilder builder, string label, string path)
+    private static void AppendFileHash(StringBuilder builder, string label, string path, FileHashCache? hashCache)
     {
         FileInfo file = new(path);
         if (!file.Exists)
@@ -86,10 +88,11 @@ public static class CacheManager
 
         builder.AppendLine($"{label}=exists");
         builder.AppendLine($"{label}.length={file.Length}");
-        builder.AppendLine($"{label}.sha256={HashUtil.ComputeFileSha256(path)}");
+        builder.AppendLine($"{label}.writeUtc={file.LastWriteTimeUtc.Ticks}");
+        builder.AppendLine($"{label}.sha256={HashUtil.ComputeFileSha256(path, hashCache)}");
     }
 
-    private static void AppendDirectoryFingerprint(StringBuilder builder, string label, string directory)
+    private static void AppendDirectoryFingerprint(StringBuilder builder, string label, string directory, FileHashCache? hashCache)
     {
         if (!Directory.Exists(directory))
         {
@@ -106,7 +109,7 @@ public static class CacheManager
         {
             string relativePath = PathUtil.NormalizeRelativePath(Path.GetRelativePath(directory, file));
             builder.AppendLine($"{label}.file={relativePath}");
-            AppendFileHash(builder, $"{label}.{relativePath}", file);
+            AppendFileHash(builder, $"{label}.{relativePath}", file, hashCache);
         }
     }
 }

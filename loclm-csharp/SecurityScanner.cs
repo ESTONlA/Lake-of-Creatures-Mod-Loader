@@ -143,12 +143,37 @@ public static class SecurityScanner
             "FromBase64String")
     };
 
-    public static SecurityScanResult ScanMod(string modPath, string dllPath, SecurityAllowlist allowlist)
+    public static Dictionary<string, SecurityScanResult> ScanMods(
+        IReadOnlyList<ModInfo> mods,
+        string modsDirectory,
+        SecurityAllowlist allowlist,
+        FileHashCache? hashCache)
     {
-        string modHash = ComputeModHash(modPath);
-        List<SecurityFinding> findings = new();
+        Dictionary<string, SecurityScanResult> results = new(StringComparer.OrdinalIgnoreCase);
+        object lockObject = new();
 
-        ScanFileForSuspiciousPatterns(dllPath, Path.GetFileName(dllPath), findings);
+        Parallel.ForEach(mods, mod =>
+        {
+            string modPath = Path.Combine(modsDirectory, Path.GetFileName(mod.modPath));
+            string modFolderName = Path.GetFileName(mod.modPath);
+            string dllPath = Path.Combine(modPath, modFolderName + ".dll");
+            SecurityScanResult result = ScanMod(modPath, dllPath, allowlist, hashCache);
+            lock (lockObject)
+            {
+                results[mod.folderName] = result;
+            }
+        });
+
+        return results;
+    }
+
+    public static SecurityScanResult ScanMod(string modPath, string dllPath, SecurityAllowlist allowlist, FileHashCache? hashCache = null)
+    {
+        string modHash = ComputeModHash(modPath, hashCache);
+        List<SecurityFinding> findings = new();
+        List<string> skippedLargeFiles = new();
+
+        ScanFileForSuspiciousPatterns(dllPath, Path.GetFileName(dllPath), findings, skippedLargeFiles);
         foreach (string filePath in EnumerateSecurityScanFiles(modPath, dllPath))
         {
             if (findings.Count >= SecurityScanResult.MaxFindings)
@@ -157,11 +182,11 @@ public static class SecurityScanner
             }
 
             string relativePath = Path.GetRelativePath(modPath, filePath).Replace('\\', '/');
-            ScanFileForSuspiciousPatterns(filePath, relativePath, findings);
+            ScanFileForSuspiciousPatterns(filePath, relativePath, findings, skippedLargeFiles);
         }
 
         bool isAllowlisted = findings.Count > 0 && allowlist.Allows(modHash);
-        return new SecurityScanResult(modHash, findings, isAllowlisted);
+        return new SecurityScanResult(modHash, findings, skippedLargeFiles, isAllowlisted);
     }
 
     private static IEnumerable<string> EnumerateSecurityScanFiles(string modPath, string mainDllPath)
@@ -201,12 +226,22 @@ public static class SecurityScanner
         fileName.Equals("System.Drawing.Common.dll", StringComparison.OrdinalIgnoreCase) ||
         fileName.Equals("ICSharpCode.SharpZipLib.dll", StringComparison.OrdinalIgnoreCase);
 
-    private static void ScanFileForSuspiciousPatterns(string path, string displayPath, List<SecurityFinding> findings)
+    private static void ScanFileForSuspiciousPatterns(
+        string path,
+        string displayPath,
+        List<SecurityFinding> findings,
+        List<string> skippedLargeFiles)
     {
         const long maxScanBytes = 16 * 1024 * 1024;
         FileInfo file = new(path);
-        if (!file.Exists || file.Length > maxScanBytes)
+        if (!file.Exists)
         {
+            return;
+        }
+
+        if (file.Length > maxScanBytes)
+        {
+            skippedLargeFiles.Add(displayPath);
             return;
         }
 
@@ -231,17 +266,28 @@ public static class SecurityScanner
         }
     }
 
-    private static string ComputeModHash(string modPath)
+    private static string ComputeModHash(string modPath, FileHashCache? hashCache)
     {
         StringBuilder builder = new();
-        foreach (string filePath in Directory.GetFiles(modPath, "*", SearchOption.AllDirectories)
-                     .OrderBy(path => Path.GetRelativePath(modPath, path), StringComparer.OrdinalIgnoreCase))
+        string[] files = Directory.GetFiles(modPath, "*", SearchOption.AllDirectories)
+            .OrderBy(path => Path.GetRelativePath(modPath, path), StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        string[] hashes = new string[files.Length];
+
+        Parallel.For(0, files.Length, i =>
         {
+            hashes[i] = HashUtil.ComputeFileSha256(files[i], hashCache);
+        });
+
+        for (int i = 0; i < files.Length; i++)
+        {
+            string filePath = files[i];
             string relativePath = Path.GetRelativePath(modPath, filePath).Replace('\\', '/');
             FileInfo file = new(filePath);
             builder.AppendLine(relativePath);
             builder.AppendLine(file.Length.ToString());
-            builder.AppendLine(HashUtil.ComputeFileSha256(filePath));
+            builder.AppendLine(file.LastWriteTimeUtc.Ticks.ToString());
+            builder.AppendLine(hashes[i]);
         }
 
         return HashUtil.ComputeStringSha256(builder.ToString());
@@ -271,15 +317,21 @@ public sealed class SecurityScanResult
 {
     public const int MaxFindings = 50;
 
-    public SecurityScanResult(string modHash, IReadOnlyList<SecurityFinding> findings, bool isAllowedByAllowlist)
+    public SecurityScanResult(
+        string modHash,
+        IReadOnlyList<SecurityFinding> findings,
+        IReadOnlyList<string> skippedLargeFiles,
+        bool isAllowedByAllowlist)
     {
         ModHash = modHash;
         Findings = findings;
+        SkippedLargeFiles = skippedLargeFiles;
         IsAllowedByAllowlist = isAllowedByAllowlist;
     }
 
     public string ModHash { get; }
     public IReadOnlyList<SecurityFinding> Findings { get; }
+    public IReadOnlyList<string> SkippedLargeFiles { get; }
     public bool IsAllowedByAllowlist { get; }
     public bool IsBlocked => Findings.Count > 0 && !IsAllowedByAllowlist;
 

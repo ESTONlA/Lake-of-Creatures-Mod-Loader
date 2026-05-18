@@ -9,6 +9,9 @@ public static class HashUtil
         return Convert.ToHexString(sha.ComputeHash(stream));
     }
 
+    public static string ComputeFileSha256(string path, FileHashCache? cache) =>
+        cache is null ? ComputeFileSha256(path) : cache.GetSha256(path);
+
     public static string ComputeStringSha256(string value) =>
         Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value)));
 }

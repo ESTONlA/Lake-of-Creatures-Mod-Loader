@@ -40,9 +40,11 @@ public sealed class ModLoader
         SecurityAllowlist securityAllowlist,
         IReadOnlyCollection<string> whitelisted,
         IReadOnlyCollection<string> blacklisted,
-        ResourceChangeTracker changeTracker)
+        ResourceChangeTracker changeTracker,
+        FileHashCache? hashCache = null,
+        ModLoadPlan? preparedLoadPlan = null)
     {
-        ModLoadPlan loadPlan = ModLoadPlanner.Build(
+        ModLoadPlan loadPlan = preparedLoadPlan ?? ModLoadPlanner.Build(
             modsDirectory,
             disabledModsDirectory,
             loaderVersion,
@@ -51,11 +53,18 @@ public sealed class ModLoader
             blacklisted,
             info,
             warn,
-            error);
+            error,
+            hashCache);
 
         info(options.StrictMode
             ? "Mod failure mode: strict. First load failure stops remaining mods."
             : "Mod failure mode: relaxed. Failed mods are skipped when safe.");
+        Dictionary<string, SecurityScanResult> securityResults = new(StringComparer.OrdinalIgnoreCase);
+        if (loadPlan.Mods.Count > 0)
+        {
+            step($"Security scanning {loadPlan.Mods.Count} mod(s) in parallel");
+            securityResults = SecurityScanner.ScanMods(loadPlan.Mods, modsDirectory, securityAllowlist, hashCache);
+        }
 
         List<string> loadedMods = new();
         List<string> failedMods = loadPlan.Statuses
@@ -80,6 +89,7 @@ public sealed class ModLoader
                 changeTracker,
                 mod,
                 FindStatus(loadPlan.Statuses, mod),
+                securityResults,
                 loadedMods,
                 failedMods,
                 securityBlockedMods,
@@ -102,6 +112,7 @@ public sealed class ModLoader
         ResourceChangeTracker changeTracker,
         ModInfo mod,
         ModStatus modStatus,
+        IReadOnlyDictionary<string, SecurityScanResult> securityResults,
         List<string> loadedMods,
         List<string> failedMods,
         List<string> securityBlockedMods,
@@ -125,15 +136,24 @@ public sealed class ModLoader
         }
 
         Stopwatch loadStopwatch = Stopwatch.StartNew();
-        SecurityScanResult securityScan = SecurityScanner.ScanMod(modPath, dllPath, securityAllowlist);
+        SecurityScanResult securityScan = securityResults.TryGetValue(mod.folderName, out SecurityScanResult? preparedSecurityScan)
+            ? preparedSecurityScan
+            : SecurityScanner.ScanMod(modPath, dllPath, securityAllowlist);
         modStatus.Security = new SecurityStatus
         {
             Hash = securityScan.ModHash,
             Result = securityScan.IsBlocked ? "blocked" : securityScan.IsAllowedByAllowlist ? "allowlisted" : "clean",
             Summary = securityScan.Summary,
-            Findings = securityScan.Findings.ToList()
+            Findings = securityScan.Findings.ToList(),
+            SkippedLargeFiles = securityScan.SkippedLargeFiles.ToList()
         };
         info($"\"{modDisplayName}\" Hash \"{securityScan.ModHash}\"");
+        if (securityScan.SkippedLargeFiles.Count > 0)
+        {
+            string warning = $"Security scan skipped {securityScan.SkippedLargeFiles.Count} large file(s) in \"{modDisplayName}\".";
+            warn(warning);
+            modStatus.Warnings.Add(warning);
+        }
 
         if (securityScan.IsBlocked)
         {

@@ -43,6 +43,20 @@ public static class LoaderApp
 
     public static void Run(string[] args)
     {
+        LoaderPhaseTimer phases = new();
+        if (args.Any(arg => arg.Equals("--benchmark", StringComparison.OrdinalIgnoreCase)))
+        {
+            string benchmarkLogsDirectory = Path.Combine(AppContext.BaseDirectory, "Logs");
+            Directory.CreateDirectory(benchmarkLogsDirectory);
+            LoaderLogger.Initialize(Path.Combine(benchmarkLogsDirectory, "LOCLM.log"), LoaderConstants.LoaderVersion);
+            LogBanner();
+            LogInfo("Benchmark mode enabled. No game files will be patched or launched.");
+            BenchmarkMode.Run(AppContext.BaseDirectory, phases, LogInfo, LogWarn, LogSuccess);
+            phases.WriteReport(benchmarkLogsDirectory, "benchmark", LogInfo, LogWarn);
+            ReportMaintenance.CompressOldReports(benchmarkLogsDirectory, TimeSpan.FromDays(14), LogInfo, LogWarn);
+            return;
+        }
+
         LoaderResult<LoaderConfig> configResult = LoaderConfig.Create(args, AppContext.BaseDirectory);
         if (!configResult.Success || configResult.Value is null)
         {
@@ -74,10 +88,11 @@ public static class LoaderApp
         LogInfo($"Output cache: {outputDataWinPath}");
         LogInfo($"Loader log: {loaderLogPath}");
 
-        LoaderResult installValidation = InstallValidator.Validate(config);
+        LoaderResult installValidation = phases.Measure("install validation", () => InstallValidator.Validate(config));
         if (!installValidation.Success)
         {
             LogError(installValidation.Error?.Message ?? "Install validation failed.");
+            FinishPerformance(logsDirectory, phases, null, "install_failed");
             return;
         }
 
@@ -89,7 +104,9 @@ public static class LoaderApp
         Directory.CreateDirectory(disabledModsDirectory);
         Directory.CreateDirectory(quarantineDirectory);
 
-        StartupDiagnostics.Run(
+        FileHashCache hashCache = FileHashCache.Load(Path.Combine(logsDirectory, "file_hash_cache.json"), LogWarn);
+
+        phases.Measure("startup diagnostics", () => StartupDiagnostics.Run(
             originalDataWinPath,
             gameExecutable,
             loclmDirectory,
@@ -97,15 +114,43 @@ public static class LoaderApp
             modsDirectory,
             LoaderConstants.LoaderVersion,
             LogInfo,
-            LogWarn);
+            LogWarn));
 
-        GameCompatibilityInfo gameCompatibility = GameCompatibilityInfo.Create(originalDataWinPath, gameExecutable);
-        SecurityAllowlist securityAllowlist = SecurityAllowlist.Load(securityAllowlistPath, LogWarn);
-        string cacheFingerprint = CacheManager.BuildCacheFingerprint(originalDataWinPath, gameExecutable, loclmDirectory, modsDirectory);
-        if (CacheManager.IsCacheValid(outputDataWinPath, cacheManifestPath, cacheFingerprint, LogWarn))
+        GameCompatibilityInfo gameCompatibility = phases.Measure("game compatibility hashes", () => GameCompatibilityInfo.Create(originalDataWinPath, gameExecutable, hashCache));
+        SecurityAllowlist securityAllowlist = phases.Measure("security allowlist load", () => SecurityAllowlist.Load(securityAllowlistPath, LogWarn));
+
+        string[] blacklisted = LoadOptionalList(Path.Combine(loclmDirectory, "blacklist.txt"));
+        string[] whitelisted = LoadOptionalList(Path.Combine(loclmDirectory, "whitelist.txt"));
+        ModLoadPlan loadPlan = phases.Measure("mod discovery and load order", () => ModLoadPlanner.Build(
+            modsDirectory,
+            disabledModsDirectory,
+            LoaderConstants.LoaderVersion,
+            gameCompatibility,
+            whitelisted,
+            blacklisted,
+            LogInfo,
+            LogWarn,
+            LogError,
+            hashCache));
+
+        if (loadPlan.Mods.Count == 0)
+        {
+            LogSuccess("No active mods found. Skipping data.win patching and launching the original game data directly.");
+            ModStatusWriter.WriteAll(logsDirectory, LoaderConstants.LoaderVersion, loadOptions.StrictMode, loadPlan.Statuses);
+            WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, originalDataWinPath, cacheManifestPath, gameCompatibility, false);
+            FinishPerformance(logsDirectory, phases, hashCache, "no_active_mods");
+            LogStep("Launching game");
+            LogInfo("Executable: " + gameExecutable);
+            GameLauncher.Launch(gameExecutable, originalDataWinPath, args, LogWarn, LogError, LogSuccess);
+            return;
+        }
+
+        string cacheFingerprint = phases.Measure("cache fingerprint", () => CacheManager.BuildCacheFingerprint(originalDataWinPath, gameExecutable, loclmDirectory, modsDirectory, hashCache));
+        if (phases.Measure("cache validation", () => CacheManager.IsCacheValid(outputDataWinPath, cacheManifestPath, cacheFingerprint, LogWarn)))
         {
             LogSuccess("Cache is up to date. Skipping regeneration.");
             WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, gameCompatibility, false);
+            FinishPerformance(logsDirectory, phases, hashCache, "cache_reused");
             LogStep("Launching game");
             LogInfo("Executable: " + gameExecutable);
             GameLauncher.Launch(gameExecutable, outputDataWinPath, args, LogWarn, LogError, LogSuccess);
@@ -117,29 +162,19 @@ public static class LoaderApp
         LogStep("Opening data.win");
         LogStep($"Reading unmodified data.win from \"{originalDataWinPath}\"...");
         GamePatcher gamePatcher = new();
-        UndertaleData data = gamePatcher.ReadDataWin(originalDataWinPath, message =>
+        UndertaleData data = phases.Measure("read data.win", () => gamePatcher.ReadDataWin(originalDataWinPath, message =>
         {
             LogError("Exception while reading data.win:");
             LogPlain(message);
-        });
-        FutureProofing.Run(data, gameCompatibility, logsDirectory, loclmDirectory, LoaderConstants.LoaderVersion, LogInfo, LogWarn);
+        }));
+        phases.Measure("future proofing report", () => FutureProofing.Run(data, gameCompatibility, logsDirectory, loclmDirectory, LoaderConstants.LoaderVersion, LogInfo, LogWarn));
 
         LogStep("Scanning mods directory");
         LogInfo(modsDirectory);
-        string[] blacklisted = {};
-        string[] whitelisted = {};
-        if (File.Exists(Path.Combine(loclmDirectory, "blacklist.txt")))
-        {
-            blacklisted = File.ReadAllLines(Path.Combine(loclmDirectory, "blacklist.txt"));
-        }
-        if (File.Exists(Path.Combine(loclmDirectory, "whitelist.txt")))
-        {
-            whitelisted = File.ReadAllLines(Path.Combine(loclmDirectory, "whitelist.txt"));
-        }
 
         ResourceChangeTracker changeTracker = new();
         ModLoader modLoader = new(loadOptions, LogInfo, LogStep, LogSuccess, LogWarn, LogError, LogPlain);
-        ModLoadExecutionResult modLoadResult = modLoader.LoadMods(
+        ModLoadExecutionResult modLoadResult = phases.Measure("load mods and security scan", () => modLoader.LoadMods(
             data,
             modsDirectory,
             disabledModsDirectory,
@@ -149,15 +184,17 @@ public static class LoaderApp
             securityAllowlist,
             whitelisted,
             blacklisted,
-            changeTracker);
-        ModLoadPlan loadPlan = modLoadResult.LoadPlan;
+            changeTracker,
+            hashCache,
+            loadPlan));
+        loadPlan = modLoadResult.LoadPlan;
         IReadOnlyList<string> loadedMods = modLoadResult.LoadedMods;
         IReadOnlyList<string> failedMods = modLoadResult.FailedMods;
         IReadOnlyList<string> securityBlockedMods = modLoadResult.SecurityBlockedMods;
         bool hasErrored = modLoadResult.HasErrored;
 
-        ModStatusWriter.WriteAll(logsDirectory, LoaderConstants.LoaderVersion, loadOptions.StrictMode, loadPlan.Statuses);
-        changeTracker.WriteReport(conflictReportPath);
+        phases.Measure("write mod status reports", () => ModStatusWriter.WriteAll(logsDirectory, LoaderConstants.LoaderVersion, loadOptions.StrictMode, loadPlan.Statuses));
+        phases.Measure("write conflict report", () => changeTracker.WriteReport(conflictReportPath));
         IReadOnlyList<string> modConflicts = changeTracker.BuildMenuSummaries();
         if (changeTracker.Conflicts.Count > 0)
         {
@@ -169,7 +206,7 @@ public static class LoaderApp
         }
 
         InGameMenuInstaller menuInstaller = new(new GmlAssetLoader(loclmDirectory), LogInfo, LogWarn, LogSuccess);
-        bool menuInstalled = menuInstaller.Install(data, modsDirectory, loadedMods, failedMods, securityBlockedMods, modConflicts);
+        bool menuInstalled = phases.Measure("install in-game menu", () => menuInstaller.Install(data, modsDirectory, loadedMods, failedMods, securityBlockedMods, modConflicts));
         if (!menuInstalled)
         {
             LogWarn("LOCLM will continue without the in-game menu. Mods can still load and the generated cache can still launch.");
@@ -195,16 +232,40 @@ Continue? (type y and press Enter)
 
         LogStep("Creating output stream");
         LogStep($"Writing modified data.win to \"{outputDataWinPath}\"...");
-        gamePatcher.WriteDataWin(outputDataWinPath, data);
+        phases.Measure("write patched data.win", () => gamePatcher.WriteDataWin(outputDataWinPath, data));
+        LoaderResult cacheValidation = phases.Measure("validate patched cache", () => gamePatcher.ValidateWrittenDataWin(outputDataWinPath));
+        if (!cacheValidation.Success)
+        {
+            LogError(cacheValidation.Error?.Message ?? "Generated cache validation failed.");
+            FinishPerformance(logsDirectory, phases, hashCache, "cache_validation_failed");
+            return;
+        }
+
         if (!hasErrored)
         {
-            CacheManager.WriteCacheManifest(cacheManifestPath, cacheFingerprint, LogInfo);
+            phases.Measure("write cache manifest", () => CacheManager.WriteCacheManifest(cacheManifestPath, cacheFingerprint, LogInfo));
         }
         LogSuccess("Done.");
         WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, gameCompatibility, hasErrored);
+        FinishPerformance(logsDirectory, phases, hashCache, hasErrored ? "patched_with_errors" : "patched");
         LogStep("Launching game");
         LogInfo("Executable: " + gameExecutable);
         GameLauncher.Launch(gameExecutable, outputDataWinPath, args, LogWarn, LogError, LogSuccess);
+    }
+
+    private static string[] LoadOptionalList(string path) =>
+        File.Exists(path)
+            ? File.ReadAllLines(path)
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .Select(line => line.Trim())
+                .ToArray()
+            : Array.Empty<string>();
+
+    private static void FinishPerformance(string logsDirectory, LoaderPhaseTimer phases, FileHashCache? hashCache, string mode)
+    {
+        hashCache?.Save(LogWarn);
+        phases.WriteReport(logsDirectory, mode, LogInfo, LogWarn);
+        ReportMaintenance.CompressOldReports(logsDirectory, TimeSpan.FromDays(14), LogInfo, LogWarn);
     }
 
     private static void WriteRunSummary(

@@ -1,0 +1,80 @@
+name: Release Announcement
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post release to announcement channel
+        env:
+          ANNOUNCER_URL: ${{ secrets.RELEASE_ANNOUNCER_URL }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          webhook_url = os.environ["ANNOUNCER_URL"]
+
+          release_name = os.environ.get("RELEASE_NAME") or os.environ.get("RELEASE_TAG") or "New Release"
+          release_tag = os.environ.get("RELEASE_TAG") or "Unknown"
+          release_url = os.environ.get("RELEASE_URL") or ""
+          release_body = os.environ.get("RELEASE_BODY") or "No release notes provided."
+          repo_name = os.environ.get("REPO_NAME") or "Repository"
+
+          if len(release_body) > 3500:
+          release_body = release_body[:3500] + f"\n\n...read the full patch notes here: {release_url}" 
+
+          payload = {
+              "username": "LOCLM Releases",
+              "embeds": [
+                  {
+                      "title": f"New Release: {release_name}",
+                      "url": release_url,
+                      "description": release_body,
+                      "color": 5865240,
+                      "fields": [
+                          {
+                              "name": "Repository",
+                              "value": repo_name,
+                              "inline": True
+                          },
+                          {
+                              "name": "Version",
+                              "value": release_tag,
+                              "inline": True
+                          },
+                          {
+                              "name": "Download",
+                              "value": f"[Open release]({release_url})",
+                              "inline": False
+                          }
+                      ]
+                  }
+              ]
+          }
+
+          data = json.dumps(payload).encode("utf-8")
+
+          request = urllib.request.Request(
+              webhook_url,
+              data=data,
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "GitHub-Release-Announcer"
+              },
+              method="POST"
+          )
+
+          with urllib.request.urlopen(request) as response:
+              print(f"Discord response: {response.status}")
+          PY

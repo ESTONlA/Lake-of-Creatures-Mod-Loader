@@ -10,9 +10,11 @@ public static class Program
         Run("metadata validation rejects missing modinfo", MetadataValidationRejectsMissingManifest);
         Run("metadata validation accepts valid mod folder", MetadataValidationAcceptsValidModFolder);
         Run("cache fingerprint changes when mod file changes", CacheFingerprintChangesWhenModFileChanges);
+        Run("file hash cache persists hashes", FileHashCachePersistsHashes);
         Run("security allowlist parses hashes", SecurityAllowlistParsesHashes);
         Run("dependency detection skips missing dependency", DependencyDetectionSkipsMissingDependency);
         Run("install layout detects mismatched game/data folders", InstallLayoutDetectsWrongFolder);
+        Run("cache output validation rejects empty file", CacheOutputValidationRejectsEmptyFile);
         Run("zip packaging script validates supported build file", ZipPackagingScriptValidatesSupportedBuildFile);
 
         if (Failures.Count == 0)
@@ -78,6 +80,21 @@ public static class Program
         AssertNotEqual(first, second, "fingerprint should change when mod file changes");
     }
 
+    private static void FileHashCachePersistsHashes()
+    {
+        using TempDir temp = new();
+        string file = WriteFile(temp.Path, "large.bin", new string('x', 4096));
+        string cachePath = Path.Combine(temp.Path, "file_hash_cache.json");
+
+        FileHashCache first = FileHashCache.Load(cachePath, _ => { });
+        string firstHash = first.GetSha256(file);
+        first.Save(_ => { });
+
+        FileHashCache second = FileHashCache.Load(cachePath, _ => { });
+        string secondHash = second.GetSha256(file);
+        AssertEqual(firstHash, secondHash, "persisted file hash should be reused for unchanged file metadata");
+    }
+
     private static void SecurityAllowlistParsesHashes()
     {
         using TempDir temp = new();
@@ -126,6 +143,15 @@ public static class Program
         LoaderResult result = InstallValidator.Validate(config);
         AssertFalse(result.Success, "different data/exe folder should fail");
         AssertEqual("wrong_game_folder", result.Error?.Code, "wrong folder code should be stable");
+    }
+
+    private static void CacheOutputValidationRejectsEmptyFile()
+    {
+        using TempDir temp = new();
+        string cachePath = WriteFile(temp.Path, "LOCLM_CACHE_data.win", "");
+        LoaderResult result = new GamePatcher().ValidateWrittenDataWin(cachePath);
+        AssertFalse(result.Success, "empty generated cache should fail validation");
+        AssertEqual("empty_cache_output", result.Error?.Code, "empty cache error code should be stable");
     }
 
     private static void ZipPackagingScriptValidatesSupportedBuildFile()

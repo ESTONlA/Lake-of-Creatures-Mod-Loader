@@ -25,11 +25,11 @@ public sealed class GameCompatibilityInfo
     public string DataWinSha256 { get; init; } = "";
     public string GameExecutableSha256 { get; init; } = "";
 
-    public static GameCompatibilityInfo Create(string dataWinPath, string gameExecutablePath) =>
+    public static GameCompatibilityInfo Create(string dataWinPath, string gameExecutablePath, FileHashCache? hashCache = null) =>
         new()
         {
-            DataWinSha256 = ComputeFileHash(dataWinPath),
-            GameExecutableSha256 = ComputeFileHash(gameExecutablePath)
+            DataWinSha256 = ComputeFileHash(dataWinPath, hashCache),
+            GameExecutableSha256 = ComputeFileHash(gameExecutablePath, hashCache)
         };
 
     public bool MatchesSupportedVersion(string version)
@@ -46,7 +46,7 @@ public sealed class GameCompatibilityInfo
             GameExecutableSha256.StartsWith(normalized, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string ComputeFileHash(string path) => HashUtil.ComputeFileSha256(path);
+    private static string ComputeFileHash(string path, FileHashCache? hashCache) => HashUtil.ComputeFileSha256(path, hashCache);
 }
 
 public sealed class ModLoadPlan
@@ -66,7 +66,8 @@ public static class ModLoadPlanner
         IReadOnlyCollection<string> blacklist,
         Action<string> info,
         Action<string> warn,
-        Action<string> error)
+        Action<string> error,
+        FileHashCache? hashCache = null)
     {
         Directory.CreateDirectory(modsDirectory);
         Directory.CreateDirectory(disabledModsDirectory);
@@ -148,7 +149,7 @@ public static class ModLoadPlanner
             status.State = "planned";
             status.CompatibilityStatus = "Compatible";
             status.DllPath = Path.Combine(modDirectory, folderName + ".dll");
-            status.DllSha256 = File.Exists(status.DllPath) ? HashUtil.ComputeFileSha256(status.DllPath) : "";
+            status.DllSha256 = File.Exists(status.DllPath) ? HashUtil.ComputeFileSha256(status.DllPath, hashCache) : "";
             status.DllArchitecture = PortableExecutableInspector.GetArchitecture(status.DllPath);
             status.TargetFramework = ModFrameworkInspector.GetTargetFramework(modDirectory, folderName);
             candidates.Add(mod);
@@ -568,6 +569,7 @@ public sealed class SecurityStatus
     public string Result { get; set; } = "not_scanned";
     public string Summary { get; set; } = "";
     public List<SecurityFinding> Findings { get; set; } = new();
+    public List<string> SkippedLargeFiles { get; set; } = new();
 }
 
 public sealed class ModStatusReport
