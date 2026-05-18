@@ -133,18 +133,6 @@ public static class LoaderApp
             LogError,
             hashCache));
 
-        if (loadPlan.Mods.Count == 0)
-        {
-            LogSuccess("No active mods found. Skipping data.win patching and launching the original game data directly.");
-            ModStatusWriter.WriteAll(logsDirectory, LoaderConstants.LoaderVersion, loadOptions.StrictMode, loadPlan.Statuses);
-            WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, originalDataWinPath, cacheManifestPath, gameCompatibility, false);
-            FinishPerformance(logsDirectory, phases, hashCache, "no_active_mods");
-            LogStep("Launching game");
-            LogInfo("Executable: " + gameExecutable);
-            GameLauncher.Launch(gameExecutable, originalDataWinPath, args, LogWarn, LogError, LogSuccess);
-            return;
-        }
-
         string cacheFingerprint = phases.Measure("cache fingerprint", () => CacheManager.BuildCacheFingerprint(originalDataWinPath, gameExecutable, loclmDirectory, modsDirectory, hashCache));
         if (phases.Measure("cache validation", () => CacheManager.IsCacheValid(outputDataWinPath, cacheManifestPath, cacheFingerprint, LogWarn)))
         {
