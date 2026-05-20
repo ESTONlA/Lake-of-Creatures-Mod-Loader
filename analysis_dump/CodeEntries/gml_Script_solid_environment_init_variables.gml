@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_solid_environment_init_variables", decompile that instead.

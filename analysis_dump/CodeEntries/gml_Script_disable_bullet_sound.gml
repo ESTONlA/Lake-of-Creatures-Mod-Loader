@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_disable_bullet_sound", decompile that instead.

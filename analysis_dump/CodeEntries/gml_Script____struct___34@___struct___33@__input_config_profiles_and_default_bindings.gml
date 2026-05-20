@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript___input_config_profiles_and_default_bindings", decompile that instead.

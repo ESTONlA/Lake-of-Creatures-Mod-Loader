@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_input_binding_gamepad_get", decompile that instead.

@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_draw_text_outline_b2x", decompile that instead.

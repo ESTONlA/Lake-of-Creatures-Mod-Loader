@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_spawn_overworld_rooms_2", decompile that instead.

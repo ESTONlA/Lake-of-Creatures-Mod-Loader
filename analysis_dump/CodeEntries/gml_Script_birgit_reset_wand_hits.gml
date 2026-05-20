@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_birgit_reset_wand_hits", decompile that instead.

@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript___input_sdl2_database_funcs", decompile that instead.

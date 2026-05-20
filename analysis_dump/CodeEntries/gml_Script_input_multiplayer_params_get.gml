@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_input_multiplayer_params_get", decompile that instead.

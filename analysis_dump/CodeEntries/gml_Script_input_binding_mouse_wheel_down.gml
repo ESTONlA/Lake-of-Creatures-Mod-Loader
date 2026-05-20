@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_input_binding_mouse_wheel_down", decompile that instead.

@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_enemy_deal_damage_from_player", decompile that instead.

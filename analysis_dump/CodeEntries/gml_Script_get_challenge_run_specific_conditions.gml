@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_get_challenge_run_specific_conditions", decompile that instead.

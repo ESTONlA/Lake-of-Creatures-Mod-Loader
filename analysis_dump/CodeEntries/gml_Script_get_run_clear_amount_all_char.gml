@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_get_run_clear_amount_all_char", decompile that instead.

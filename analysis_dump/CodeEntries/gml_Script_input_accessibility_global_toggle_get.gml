@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_input_accessibility_global_toggle_get", decompile that instead.

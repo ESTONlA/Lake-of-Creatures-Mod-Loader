@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_attempt_to_lift_fish", decompile that instead.

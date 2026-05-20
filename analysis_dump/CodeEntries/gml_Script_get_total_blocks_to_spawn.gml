@@ -1,1 +1,0 @@
-// This code entry is a reference to an anonymous function within "gml_GlobalScript_get_total_blocks_to_spawn", decompile that instead.
