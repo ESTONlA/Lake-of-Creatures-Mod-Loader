@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_apply_speed_freeze_ray", decompile that instead.

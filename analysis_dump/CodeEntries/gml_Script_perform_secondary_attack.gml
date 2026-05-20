@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_perform_secondary_attack", decompile that instead.

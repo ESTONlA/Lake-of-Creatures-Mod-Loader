@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_get_magic_pot_run_modifiers", decompile that instead.

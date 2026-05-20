@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "../steam/SteamBridge.h"
+
 constexpr wchar_t PROXY_DLL[] = L"version.dll";
 constexpr wchar_t LOADER_EXE[] = L"loclm-csharp.exe";
 constexpr wchar_t LOCLM_DIR[] = L"loclm";
@@ -329,6 +331,10 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 {
     if (reason != DLL_PROCESS_ATTACH)
     {
+        if (reason == DLL_PROCESS_DETACH)
+        {
+            loclm::mp::StopSteamBridgeForGameProcess();
+        }
         return TRUE;
     }
 
@@ -359,6 +365,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
     if (hasGameArgument())
     {
         logLine(L"DllMain: -game detected, not launching LOCLM again");
+        loclm::mp::StartSteamBridgeForGameProcess(processDir);
         return TRUE;
     }
 

@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_draw_debug_category_items", decompile that instead.

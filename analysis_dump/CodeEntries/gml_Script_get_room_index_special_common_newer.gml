@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_get_room_index_special_common_newer", decompile that instead.

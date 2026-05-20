@@ -224,6 +224,7 @@ public static class ReportMaintenance
     {
         "LOCLM.log",
         "LOCLM_summary.txt",
+        "latest_run.json",
         "performance_report.json",
         "file_hash_cache.json",
         "game_baseline.json",
@@ -279,6 +280,34 @@ public static class ReportMaintenance
             info($"Compressed {compressed} old report file(s).");
         }
     }
+
+    public static void RotateLargeLogs(string logsDirectory, long maxBytes, Action<string> info, Action<string> warn)
+    {
+        if (!Directory.Exists(logsDirectory) || maxBytes <= 0)
+        {
+            return;
+        }
+
+        foreach (string path in Directory.GetFiles(logsDirectory, "*.log", SearchOption.TopDirectoryOnly))
+        {
+            try
+            {
+                FileInfo file = new(path);
+                if (file.Length <= maxBytes)
+                {
+                    continue;
+                }
+
+                string rotated = Path.Combine(logsDirectory, Path.GetFileNameWithoutExtension(path) + "." + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".log");
+                File.Move(path, rotated);
+                info("Rotated large log file: " + rotated);
+            }
+            catch (Exception ex)
+            {
+                warn("Could not rotate log '" + path + "': " + ex.Message);
+            }
+        }
+    }
 }
 
 public static class BenchmarkMode
@@ -315,7 +344,7 @@ public static class BenchmarkMode
                     })
                     .ToList();
 
-                _ = SecurityScanner.ScanMods(mods, modsDirectory, allowlist, hashCache);
+                _ = SecurityScanner.ScanMods(mods, modsDirectory, allowlist, hashCache, new SecurityScanOptions());
             });
 
             hashCache.Save(warn);

@@ -1,0 +1,9 @@
+lm_mp_slot = -1;
+lm_mp_entity_id = -1;
+lm_mp_kind = 0;
+lm_mp_room = -1;
+lm_mp_object_index = -1;
+lm_mp_seen_tick = 0;
+image_alpha = 0.85;
+sprite_index = -1;
+visible = false;

@@ -5,19 +5,17 @@ using System.Text.Json;
 public sealed class ModLoadOptions
 {
     public bool StrictMode { get; init; }
+    public bool SecurityWarnOnlyDeveloperMode { get; init; }
+    public long SecurityScanSizeLimitBytes { get; init; } = 16 * 1024 * 1024;
     public TimeSpan SlowLoadWarningThreshold { get; init; } = TimeSpan.FromSeconds(10);
 
-    public static ModLoadOptions FromEnvironment()
-    {
-        string mode = Environment.GetEnvironmentVariable("LOCLM_MOD_FAILURE_MODE") ?? "";
-        string strict = Environment.GetEnvironmentVariable("LOCLM_STRICT_MOD_LOADING") ?? "";
-        return new ModLoadOptions
+    public static ModLoadOptions FromSettings(LoaderSettings settings) =>
+        new()
         {
-            StrictMode = mode.Equals("strict", StringComparison.OrdinalIgnoreCase) ||
-                strict.Equals("1", StringComparison.OrdinalIgnoreCase) ||
-                strict.Equals("true", StringComparison.OrdinalIgnoreCase)
+            StrictMode = settings.StrictMode,
+            SecurityWarnOnlyDeveloperMode = settings.SecurityWarnOnlyDeveloperMode,
+            SecurityScanSizeLimitBytes = Math.Max(1024 * 1024, settings.SecurityScanSizeLimitBytes)
         };
-    }
 }
 
 public sealed class GameCompatibilityInfo
@@ -67,7 +65,8 @@ public static class ModLoadPlanner
         Action<string> info,
         Action<string> warn,
         Action<string> error,
-        FileHashCache? hashCache = null)
+        FileHashCache? hashCache = null,
+        ModProfile? profile = null)
     {
         Directory.CreateDirectory(modsDirectory);
         Directory.CreateDirectory(disabledModsDirectory);
@@ -102,15 +101,35 @@ public static class ModLoadPlanner
             }
 
             ModInfo mod = manifest.ModInfo;
+            foreach (string warning in mod.manifestWarnings)
+            {
+                status.Warnings.Add(warning);
+                warn($"Manifest warning for \"{mod.modName}\": {warning}");
+            }
+
+            status.ModId = mod.id;
+            status.Version = mod.version;
             status.ModName = mod.modName;
             status.Priority = mod.priority;
             status.TestedOn = mod.testedOn.ToList();
+            status.Tags = mod.tags.ToList();
+
+            string profileSkip = GetProfileSkipReason(mod, profile);
+            if (!string.IsNullOrWhiteSpace(profileSkip))
+            {
+                status.State = "disabled";
+                status.CompatibilityStatus = profileSkip;
+                status.SkipReason = profileSkip;
+                info($"Skipping \"{mod.modName}\" because {profileSkip}");
+                continue;
+            }
 
             string validationError = ValidateCompatibility(mod, loaderVersion, gameCompatibility);
             if (!string.IsNullOrWhiteSpace(validationError))
             {
                 status.State = "skipped";
                 status.CompatibilityStatus = validationError;
+                status.SkipReason = validationError;
                 warn($"Skipping \"{mod.modName}\": {validationError}");
                 continue;
             }
@@ -119,6 +138,7 @@ public static class ModLoadPlanner
             {
                 status.State = "disabled";
                 status.CompatibilityStatus = "Disabled by modinfo.json enabled=false.";
+                status.SkipReason = status.CompatibilityStatus;
                 info($"Skipping \"{mod.modName}\" because modinfo.json has enabled=false.");
                 continue;
             }
@@ -134,6 +154,7 @@ public static class ModLoadPlanner
             {
                 status.State = "skipped";
                 status.CompatibilityStatus = "Not in whitelist.txt.";
+                status.SkipReason = status.CompatibilityStatus;
                 warn($"Skipping \"{mod.modName}\" because it is not in whitelist.txt.");
                 continue;
             }
@@ -142,6 +163,7 @@ public static class ModLoadPlanner
             {
                 status.State = "skipped";
                 status.CompatibilityStatus = "Listed in blacklist.txt.";
+                status.SkipReason = status.CompatibilityStatus;
                 warn($"Skipping \"{mod.modName}\" because it is in blacklist.txt.");
                 continue;
             }
@@ -161,13 +183,44 @@ public static class ModLoadPlanner
         WarnForDllCompatibility(statuses, warn);
         ApplyIncompatibilities(candidates, statuses, warn);
         ApplyMissingDependencies(candidates, statuses, warn);
+        ApplyDependencyVersionRules(candidates, statuses, warn);
 
         List<ModInfo> ordered = ResolveLoadOrder(candidates, statuses, warn, error);
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            ModStatus status = RequireStatus(statuses, ordered[i]);
+            status.LoadOrder = i + 1;
+            if (status.LoadOrderReasons.Count == 0)
+            {
+                status.LoadOrderReasons.Add($"Priority {ordered[i].priority} with stable tie-break by mod name.");
+            }
+        }
+
         return new ModLoadPlan
         {
             Mods = ordered,
             Statuses = statuses
         };
+    }
+
+    private static string GetProfileSkipReason(ModInfo mod, ModProfile? profile)
+    {
+        if (profile is null)
+        {
+            return "";
+        }
+
+        if (profile.DisabledMods.Any(id => ContainsSingleModId(id, mod)))
+        {
+            return $"disabled by profile '{profile.Name}'.";
+        }
+
+        if (profile.EnabledMods.Count > 0 && !profile.EnabledMods.Any(id => ContainsSingleModId(id, mod)))
+        {
+            return $"not listed in active profile '{profile.Name}'.";
+        }
+
+        return "";
     }
 
     private static string ValidateCompatibility(ModInfo mod, string loaderVersion, GameCompatibilityInfo gameCompatibility)
@@ -195,10 +248,12 @@ public static class ModLoadPlanner
 
     private static void ApplyIncompatibilities(List<ModInfo> candidates, List<ModStatus> statuses, Action<string> warn)
     {
-        HashSet<string> activeIds = candidates.SelectMany(GetModIds).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, ModInfo> active = BuildModLookup(candidates);
         foreach (ModInfo mod in candidates.ToArray())
         {
-            string? incompatible = mod.incompatibleWith.FirstOrDefault(activeIds.Contains);
+            ModDependency? incompatible = mod.incompatibleRules.FirstOrDefault(rule =>
+                active.TryGetValue(rule.id, out ModInfo? other) &&
+                VersionConstraint.SatisfiedBy(other.version, rule.version));
             if (incompatible is null)
             {
                 continue;
@@ -207,17 +262,22 @@ public static class ModLoadPlanner
             candidates.Remove(mod);
             ModStatus status = RequireStatus(statuses, mod);
             status.State = "skipped";
-            status.CompatibilityStatus = $"Incompatible with installed mod '{incompatible}'.";
-            warn($"Skipping \"{mod.modName}\" because it is incompatible with \"{incompatible}\".");
+            string versionText = string.IsNullOrWhiteSpace(incompatible.version) ? "" : " " + incompatible.version;
+            status.CompatibilityStatus = $"Incompatible with installed mod '{incompatible.id}{versionText}'.";
+            status.SkipReason = status.CompatibilityStatus;
+            warn($"Skipping \"{mod.modName}\" because it is incompatible with \"{incompatible.id}{versionText}\".");
         }
     }
 
     private static void ApplyMissingDependencies(List<ModInfo> candidates, List<ModStatus> statuses, Action<string> warn)
     {
-        HashSet<string> activeIds = candidates.SelectMany(GetModIds).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, ModInfo> active = BuildModLookup(candidates);
         foreach (ModInfo mod in candidates.ToArray())
         {
-            List<string> missing = mod.dependencies.Where(dependency => !activeIds.Contains(dependency)).ToList();
+            List<string> missing = mod.dependencyRules
+                .Where(dependency => !active.ContainsKey(dependency.id))
+                .Select(dependency => dependency.id)
+                .ToList();
             if (missing.Count == 0)
             {
                 continue;
@@ -228,7 +288,54 @@ public static class ModLoadPlanner
             status.State = "failed";
             status.CompatibilityStatus = "Missing required dependencies.";
             status.Error = "Missing dependencies: " + string.Join(", ", missing);
+            status.SkipReason = status.Error;
             warn($"Skipping \"{mod.modName}\" because required dependencies are missing: {string.Join(", ", missing)}");
+        }
+    }
+
+    private static void ApplyDependencyVersionRules(List<ModInfo> candidates, List<ModStatus> statuses, Action<string> warn)
+    {
+        Dictionary<string, ModInfo> active = BuildModLookup(candidates);
+        foreach (ModInfo mod in candidates.ToArray())
+        {
+            List<string> invalid = new();
+            foreach (ModDependency dependency in mod.dependencyRules)
+            {
+                if (string.IsNullOrWhiteSpace(dependency.version))
+                {
+                    continue;
+                }
+
+                if (active.TryGetValue(dependency.id, out ModInfo? installed) &&
+                    !VersionConstraint.SatisfiedBy(installed.version, dependency.version))
+                {
+                    invalid.Add($"{dependency.id} {dependency.version} (installed {installed.version})");
+                }
+            }
+
+            if (invalid.Count == 0)
+            {
+                foreach (ModDependency optional in mod.optionalDependencyRules.Where(optional => !string.IsNullOrWhiteSpace(optional.version)))
+                {
+                    if (active.TryGetValue(optional.id, out ModInfo? installed) &&
+                        !VersionConstraint.SatisfiedBy(installed.version, optional.version))
+                    {
+                        string warning = $"Optional dependency version mismatch: {optional.id} {optional.version} (installed {installed.version}).";
+                        RequireStatus(statuses, mod).Warnings.Add(warning);
+                        warn($"\"{mod.modName}\" {warning}");
+                    }
+                }
+
+                continue;
+            }
+
+            candidates.Remove(mod);
+            ModStatus status = RequireStatus(statuses, mod);
+            status.State = "failed";
+            status.CompatibilityStatus = "Dependency version constraint failed.";
+            status.Error = "Dependency version mismatch: " + string.Join(", ", invalid);
+            status.SkipReason = status.Error;
+            warn($"Skipping \"{mod.modName}\" because dependency version constraints failed: {string.Join(", ", invalid)}");
         }
     }
 
@@ -251,6 +358,7 @@ public static class ModLoadPlanner
                 if (byId.TryGetValue(dependency, out ModInfo? before) && before != mod)
                 {
                     edges[before].Add(mod);
+                    RequireStatus(statuses, mod).LoadOrderReasons.Add($"Loaded after {before.modName} because of dependency/loadAfter '{dependency}'.");
                 }
             }
 
@@ -259,6 +367,7 @@ public static class ModLoadPlanner
                 if (byId.TryGetValue(target, out ModInfo? after) && after != mod)
                 {
                     edges[mod].Add(after);
+                    RequireStatus(statuses, after).LoadOrderReasons.Add($"Loaded after {mod.modName} because {mod.modName} declared loadBefore '{target}'.");
                 }
             }
         }
@@ -307,6 +416,7 @@ public static class ModLoadPlanner
             status.State = "failed";
             status.CompatibilityStatus = "Circular dependency/load order.";
             status.Error = "Circular dependency/load order involving: " + cycle;
+            status.SkipReason = status.Error;
         }
 
         warn("Mods in the circular dependency were skipped.");
@@ -396,8 +506,29 @@ public static class ModLoadPlanner
     private static bool ContainsModId(IReadOnlyCollection<string> ids, ModInfo mod) =>
         GetModIds(mod).Any(modId => ids.Any(id => string.Equals(id, modId, StringComparison.OrdinalIgnoreCase)));
 
+    private static bool ContainsSingleModId(string id, ModInfo mod) =>
+        GetModIds(mod).Any(modId => string.Equals(id, modId, StringComparison.OrdinalIgnoreCase));
+
+    private static Dictionary<string, ModInfo> BuildModLookup(IEnumerable<ModInfo> mods)
+    {
+        Dictionary<string, ModInfo> lookup = new(StringComparer.OrdinalIgnoreCase);
+        foreach (ModInfo mod in mods)
+        {
+            foreach (string id in GetModIds(mod))
+            {
+                if (!string.IsNullOrWhiteSpace(id))
+                {
+                    lookup.TryAdd(id, mod);
+                }
+            }
+        }
+
+        return lookup;
+    }
+
     private static IEnumerable<string> GetModIds(ModInfo mod)
     {
+        yield return mod.id;
         yield return mod.modName;
         yield return mod.folderName;
         yield return Path.GetFileName(mod.modPath);
@@ -537,20 +668,30 @@ public static class VersionRules
 public sealed class ModStatus
 {
     public string FolderName { get; set; } = "";
+    public string ModId { get; set; } = "";
     public string ModName { get; set; } = "";
+    public string Version { get; set; } = "";
     public string ModPath { get; set; } = "";
     public string State { get; set; } = "unknown";
+    public int LoadOrder { get; set; }
     public int Priority { get; set; }
     public string CompatibilityStatus { get; set; } = "";
+    public string SkipReason { get; set; } = "";
     public string DllPath { get; set; } = "";
     public string DllSha256 { get; set; } = "";
+    public string PreviousDllSha256 { get; set; } = "";
+    public bool HashChangedSinceLastRun { get; set; }
     public string DllArchitecture { get; set; } = "";
     public string TargetFramework { get; set; } = "";
     public long LoadDurationMs { get; set; }
+    public long DllLoadDurationMs { get; set; }
+    public long PatchDurationMs { get; set; }
     public string Error { get; set; } = "";
     public string StackTrace { get; set; } = "";
     public List<string> Warnings { get; set; } = new();
     public List<string> TestedOn { get; set; } = new();
+    public List<string> Tags { get; set; } = new();
+    public List<string> LoadOrderReasons { get; set; } = new();
     public List<string> ChangedResources { get; set; } = new();
     public SecurityStatus Security { get; set; } = new();
 
@@ -567,9 +708,17 @@ public sealed class SecurityStatus
 {
     public string Hash { get; set; } = "";
     public string Result { get; set; } = "not_scanned";
+    public string HighestSeverity { get; set; } = "none";
     public string Summary { get; set; } = "";
+    public long ScanDurationMs { get; set; }
+    public long TotalBytesScanned { get; set; }
+    public bool WarnOnlyDeveloperMode { get; set; }
+    public string AllowlistWarning { get; set; } = "";
     public List<SecurityFinding> Findings { get; set; } = new();
     public List<string> SkippedLargeFiles { get; set; } = new();
+    public List<string> SuspiciousFiles { get; set; } = new();
+    public List<string> NativeDlls { get; set; } = new();
+    public List<string> NetworkStrings { get; set; } = new();
 }
 
 public sealed class ModStatusReport
@@ -599,6 +748,28 @@ public sealed class SecurityReportEntry
     public SecurityStatus Security { get; set; } = new();
 }
 
+public sealed class SecurityFindingsReport
+{
+    public string GeneratedUtc { get; set; } = "";
+    public string LoaderVersion { get; set; } = "";
+    public int FindingCount { get; set; }
+    public List<SecurityFindingReportEntry> Findings { get; set; } = new();
+}
+
+public sealed class SecurityFindingReportEntry
+{
+    public string ModId { get; set; } = "";
+    public string ModName { get; set; } = "";
+    public string FolderName { get; set; } = "";
+    public string ModHash { get; set; } = "";
+    public string RuleId { get; set; } = "";
+    public string Rule { get; set; } = "";
+    public string Severity { get; set; } = "";
+    public string File { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Evidence { get; set; } = "";
+}
+
 public static class ModStatusWriter
 {
     public static void WriteAll(string loclmDirectory, string loaderVersion, bool strictMode, IReadOnlyList<ModStatus> statuses)
@@ -616,7 +787,11 @@ public static class ModStatusWriter
         WriteList(Path.Combine(loclmDirectory, "loaded_mods.json"), statuses.Where(status => status.State == "loaded"));
         WriteList(Path.Combine(loclmDirectory, "failed_mods.json"), statuses.Where(status => status.State == "failed"));
         WriteList(Path.Combine(loclmDirectory, "blocked_mods.json"), statuses.Where(status => status.State == "blocked"));
+        WriteLoadOrder(Path.Combine(loclmDirectory, "load_order.json"), statuses);
+        WriteResolvedMods(Path.Combine(loclmDirectory, "resolved_mods.json"), loaderVersion, statuses);
         WriteSecurityReport(Path.Combine(loclmDirectory, "security_report.json"), loaderVersion, statuses);
+        WriteSecurityFindings(Path.Combine(loclmDirectory, "security_findings.json"), loaderVersion, statuses);
+        SecurityScanner.WriteRuleDocumentation(Path.Combine(loclmDirectory, "security_rules.json"));
     }
 
     private static void WriteList(string path, IEnumerable<ModStatus> statuses) =>
@@ -643,4 +818,81 @@ public static class ModStatusWriter
 
         File.WriteAllText(path, JsonSerializer.Serialize(report, JsonUtil.IndentedOptions));
     }
+
+    private static void WriteSecurityFindings(string path, string loaderVersion, IReadOnlyList<ModStatus> statuses)
+    {
+        List<SecurityFindingReportEntry> findings = statuses
+            .SelectMany(status => status.Security.Findings.Select(finding => new SecurityFindingReportEntry
+            {
+                ModId = status.ModId,
+                ModName = status.ModName,
+                FolderName = status.FolderName,
+                ModHash = status.Security.Hash,
+                RuleId = finding.RuleId,
+                Rule = finding.Rule,
+                Severity = finding.Severity,
+                File = finding.File,
+                Description = finding.Description,
+                Evidence = finding.Evidence
+            }))
+            .ToList();
+
+        SecurityFindingsReport report = new()
+        {
+            GeneratedUtc = DateTime.UtcNow.ToString("O"),
+            LoaderVersion = loaderVersion,
+            FindingCount = findings.Count,
+            Findings = findings
+        };
+
+        File.WriteAllText(path, JsonSerializer.Serialize(report, JsonUtil.IndentedOptions));
+    }
+
+    private static void WriteLoadOrder(string path, IReadOnlyList<ModStatus> statuses)
+    {
+        var report = statuses
+            .Where(status => status.LoadOrder > 0)
+            .OrderBy(status => status.LoadOrder)
+            .Select(status => new
+            {
+                order = status.LoadOrder,
+                id = status.ModId,
+                name = status.ModName,
+                version = status.Version,
+                priority = status.Priority,
+                reasons = status.LoadOrderReasons
+            })
+            .ToList();
+        File.WriteAllText(path, JsonSerializer.Serialize(report, JsonUtil.IndentedOptions));
+    }
+
+    private static void WriteResolvedMods(string path, string loaderVersion, IReadOnlyList<ModStatus> statuses)
+    {
+        var report = new
+        {
+            generatedUtc = DateTime.UtcNow.ToString("O"),
+            loaderVersion,
+            loaded = statuses.Where(status => status.State == "loaded").ToList(),
+            planned = statuses.Where(status => status.State == "planned").ToList(),
+            skipped = statuses.Where(status => status.State is "skipped" or "disabled" or "failed" or "blocked")
+                .Select(status => new
+                {
+                    status.FolderName,
+                    status.ModId,
+                    status.ModName,
+                    status.Version,
+                    status.State,
+                    reason = string.IsNullOrWhiteSpace(status.SkipReason)
+                        ? FirstNonEmpty(status.Error, status.CompatibilityStatus)
+                        : status.SkipReason,
+                    status.Warnings,
+                    status.Tags
+                })
+                .ToList()
+        };
+        File.WriteAllText(path, JsonSerializer.Serialize(report, JsonUtil.IndentedOptions));
+    }
+
+    private static string FirstNonEmpty(params string[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? "";
 }

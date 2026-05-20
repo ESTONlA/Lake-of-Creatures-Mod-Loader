@@ -21,6 +21,9 @@
 
   <ItemGroup>
     <Content Include="assets\gml\**\*.gml" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="config\steam_mp.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="config.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="modinfo.schema.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="security_allowlist.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="supported_game_builds.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

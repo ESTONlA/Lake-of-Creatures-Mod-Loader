@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_input_keyboard_check_pressed", decompile that instead.

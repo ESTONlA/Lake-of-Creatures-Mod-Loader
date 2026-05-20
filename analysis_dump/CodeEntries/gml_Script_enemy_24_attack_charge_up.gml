@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_enemy_24_attack_charge_up", decompile that instead.

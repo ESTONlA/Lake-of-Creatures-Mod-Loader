@@ -1,0 +1,14 @@
+{
+  "ModFailureMode": "relaxed",
+  "Verbose": false,
+  "Quiet": false,
+  "DisableInGameMenu": false,
+  "PauseBeforeLaunch": true,
+  "LogRetentionDays": 14,
+  "LogRotationMaxBytes": 2097152,
+  "ActiveProfile": "default",
+  "AutoDisableAfterFailures": 3,
+  "SecurityWarnOnlyDeveloperMode": false,
+  "SecurityScanSizeLimitBytes": 16777216,
+  "FirstRunComplete": false
+}

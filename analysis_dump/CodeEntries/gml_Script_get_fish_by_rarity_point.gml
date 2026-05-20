@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_get_fish_by_rarity_point", decompile that instead.

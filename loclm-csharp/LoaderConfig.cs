@@ -11,8 +11,12 @@ public sealed class LoaderConfig
         ModsDirectory = Path.Combine(LoclmDirectory, "mods");
         LogsDirectory = Path.Combine(LoclmDirectory, "Logs");
         CacheManifestPath = Path.Combine(LogsDirectory, LoaderConstants.CacheManifestFileName);
+        LastKnownGoodDataWinPath = Path.Combine(DataDirectory, LoaderConstants.LastKnownGoodDataWinFileName);
+        LastKnownGoodManifestPath = Path.Combine(LogsDirectory, LoaderConstants.LastKnownGoodManifestFileName);
         DisabledModsDirectory = Path.Combine(LoclmDirectory, "disabled_mods");
         QuarantineDirectory = Path.Combine(LoclmDirectory, "quarantine");
+        ProfilesDirectory = Path.Combine(LoclmDirectory, "profiles");
+        ConfigPath = Path.Combine(LoclmDirectory, "config.json");
         SecurityAllowlistPath = Path.Combine(LoclmDirectory, "security_allowlist.json");
         LoaderLogPath = Path.Combine(LogsDirectory, "LOCLM.log");
         ConflictReportPath = Path.Combine(LogsDirectory, "mod_conflicts.json");
@@ -27,8 +31,12 @@ public sealed class LoaderConfig
     public string ModsDirectory { get; }
     public string LogsDirectory { get; }
     public string CacheManifestPath { get; }
+    public string LastKnownGoodDataWinPath { get; }
+    public string LastKnownGoodManifestPath { get; }
     public string DisabledModsDirectory { get; }
     public string QuarantineDirectory { get; }
+    public string ProfilesDirectory { get; }
+    public string ConfigPath { get; }
     public string SecurityAllowlistPath { get; }
     public string LoaderLogPath { get; }
     public string ConflictReportPath { get; }

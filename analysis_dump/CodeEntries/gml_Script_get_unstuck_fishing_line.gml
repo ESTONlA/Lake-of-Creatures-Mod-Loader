@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_get_unstuck_fishing_line", decompile that instead.

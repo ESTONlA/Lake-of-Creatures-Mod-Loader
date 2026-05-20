@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "localBridgePort": 38470,
+  "protocolVersion": 1,
+  "debug": true,
+  "sendRate": 20
+}

@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_spawn_enemies_for_room", decompile that instead.

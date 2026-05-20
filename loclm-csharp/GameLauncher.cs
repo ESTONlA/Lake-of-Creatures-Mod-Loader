@@ -5,7 +5,8 @@ public static class GameLauncher
     public static void Launch(
         string gameExecutable,
         string outputDataWinPath,
-        string[] args,
+        string[] gameArgs,
+        bool pauseBeforeLaunch,
         Action<string> warn,
         Action<string> error,
         Action<string> success)
@@ -16,16 +17,19 @@ public static class GameLauncher
             return;
         }
 
-        ConsoleTheme.WriteColored("", ConsoleColor.White);
-        ConsoleTheme.WriteColored("LOCLM is ready to relaunch the game.", ConsoleColor.Yellow);
-        ConsoleTheme.WriteColored("Type 'y' and press Enter to continue. This window will stay open until then.", ConsoleColor.Yellow);
-        WaitForYes(warn);
+        if (pauseBeforeLaunch)
+        {
+            ConsoleTheme.WriteColored("", ConsoleColor.White);
+            ConsoleTheme.WriteColored("LOCLM is ready to relaunch the game.", ConsoleColor.Yellow);
+            ConsoleTheme.WriteColored("Type 'y' and press Enter to continue. This window will stay open until then.", ConsoleColor.Yellow);
+            WaitForYes(warn);
+        }
 
         string argstring = "";
-        for (int i = 2; i < args.Length; i++)
+        for (int i = 0; i < gameArgs.Length; i++)
         {
             argstring += " \"";
-            argstring += args[i];
+            argstring += gameArgs[i];
             argstring += "\"";
         }
 

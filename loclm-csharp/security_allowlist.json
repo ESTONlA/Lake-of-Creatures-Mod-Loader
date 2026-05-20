@@ -1,3 +1,10 @@
 {
-  "allowedModHashes": []
+  "allowedModHashes": [
+    {
+      "hash": "PUT_TRUSTED_MOD_SHA256_HASH_HERE",
+      "reason": "Explain why this mod hash is trusted.",
+      "addedBy": "Your name",
+      "addedUtc": "YYYY-MM-DDTHH:MM:SSZ"
+    }
+  ]
 }

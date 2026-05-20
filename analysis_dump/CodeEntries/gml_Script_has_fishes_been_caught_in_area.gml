@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_has_fishes_been_caught_in_area", decompile that instead.

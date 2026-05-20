@@ -1,6 +1,12 @@
 {
+	"id":"loclm.creatureprobe",
+	"version":"1.0.0",
 	"modName":"Test Mod - Estonia",
 	"authors":["Unknown Modder"],
 	"description":"A LOCLM sample mod that adds a custom main menu tab.",
+	"website":"",
+	"repository":"https://github.com/ESTONlA/Lake-of-Creatures-Mod-Loader",
+	"license":"MIT",
+	"tags":["template","main-menu","example"],
 	"priority":100
 }

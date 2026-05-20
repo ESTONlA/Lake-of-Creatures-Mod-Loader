@@ -7,6 +7,8 @@ public static class LoaderApp
 {
     private static readonly List<string> WarningSummary = new();
     private static readonly List<string> ErrorSummary = new();
+    private static bool QuietMode;
+    private static int LogRetentionDays = 14;
 
     private static void WriteColored(string text, ConsoleColor color, bool newline = true)
     {
@@ -15,7 +17,10 @@ public static class LoaderApp
             LoaderLogger.WriteRaw(text);
         }
 
-        ConsoleTheme.WriteColored(text, color, newline);
+        if (!QuietMode || color is ConsoleColor.Red or ConsoleColor.Yellow)
+        {
+            ConsoleTheme.WriteColored(text, color, newline);
+        }
     }
 
     private static void LogBanner()
@@ -66,6 +71,7 @@ public static class LoaderApp
         }
 
         LoaderConfig config = configResult.Value;
+        LoaderCommandLine commandLine = LoaderCommandLine.Parse(args);
         string originalDataWinPath = config.OriginalDataWinPath;
         string gameExecutable = config.GameExecutable;
         string loclmDirectory = config.LoclmDirectory;
@@ -78,7 +84,12 @@ public static class LoaderApp
         string securityAllowlistPath = config.SecurityAllowlistPath;
         string loaderLogPath = config.LoaderLogPath;
         string conflictReportPath = config.ConflictReportPath;
-        ModLoadOptions loadOptions = ModLoadOptions.FromEnvironment();
+        LoaderSettings settings = LoaderSettings.LoadOrCreate(config.ConfigPath, commandLine.Repair, message => { }, message => { });
+        settings.ApplyCommandLine(commandLine);
+        QuietMode = settings.Quiet;
+        LogRetentionDays = Math.Max(1, settings.LogRetentionDays);
+        ReportMaintenance.RotateLargeLogs(logsDirectory, settings.LogRotationMaxBytes, message => { }, message => { });
+        ModLoadOptions loadOptions = ModLoadOptions.FromSettings(settings);
 
         Directory.CreateDirectory(logsDirectory);
         LoaderLogger.Initialize(loaderLogPath, LoaderConstants.LoaderVersion);
@@ -96,13 +107,8 @@ public static class LoaderApp
             return;
         }
 
-        if (!Directory.Exists(modsDirectory))
-        {
-            Directory.CreateDirectory(modsDirectory);
-            LogWarn($"Created missing mods folder: {modsDirectory}");
-        }
-        Directory.CreateDirectory(disabledModsDirectory);
-        Directory.CreateDirectory(quarantineDirectory);
+        SetupManager.EnsureLayout(config, settings, commandLine.Repair, LogInfo, LogWarn);
+        ModProfile activeProfile = ModProfileManager.LoadOrCreate(config, settings, LogInfo, LogWarn);
 
         FileHashCache hashCache = FileHashCache.Load(Path.Combine(logsDirectory, "file_hash_cache.json"), LogWarn);
 
@@ -131,7 +137,36 @@ public static class LoaderApp
             LogInfo,
             LogWarn,
             LogError,
-            hashCache));
+            hashCache,
+            activeProfile));
+        if (commandLine.SafeMode)
+        {
+            foreach (ModStatus status in loadPlan.Statuses.Where(status => status.State == "planned"))
+            {
+                status.State = "disabled";
+                status.CompatibilityStatus = "Disabled by --safe-mode.";
+                status.SkipReason = status.CompatibilityStatus;
+            }
+            loadPlan.Mods.Clear();
+            LogWarn("Safe mode enabled. All mods are disabled for this launch.");
+        }
+        if (loadPlan.Mods.Count == 0)
+        {
+            LogInfo("No active mods found. LOCLM will still generate/use a patched cache so the in-game LOCLM menu stays available.");
+        }
+
+        phases.Measure("write planned mod reports", () =>
+        {
+            ModHashHistory.ApplyAndSave(logsDirectory, loadPlan.Statuses, LogWarn);
+            ModStatusWriter.WriteAll(logsDirectory, LoaderConstants.LoaderVersion, loadOptions.StrictMode, loadPlan.Statuses);
+        });
+
+        if (LoaderUtilityModes.TryRun(commandLine, config, settings, loadPlan, LogInfo, LogSuccess, LogWarn, LogError))
+        {
+            LatestRunReport.Write(logsDirectory, "utility", config, settings, commandLine, loadPlan.Statuses, WarningSummary, ErrorSummary, LogWarn);
+            FinishPerformance(logsDirectory, phases, hashCache, "utility");
+            return;
+        }
 
         string cacheFingerprint = phases.Measure("cache fingerprint", () => CacheManager.BuildCacheFingerprint(originalDataWinPath, gameExecutable, loclmDirectory, modsDirectory, hashCache));
         if (phases.Measure("cache validation", () => CacheManager.IsCacheValid(outputDataWinPath, cacheManifestPath, cacheFingerprint, LogWarn)))
@@ -141,7 +176,8 @@ public static class LoaderApp
             FinishPerformance(logsDirectory, phases, hashCache, "cache_reused");
             LogStep("Launching game");
             LogInfo("Executable: " + gameExecutable);
-            GameLauncher.Launch(gameExecutable, outputDataWinPath, args, LogWarn, LogError, LogSuccess);
+            LatestRunReport.Write(logsDirectory, "cache_reused", config, settings, commandLine, loadPlan.Statuses, WarningSummary, ErrorSummary, LogWarn);
+            GameLauncher.Launch(gameExecutable, outputDataWinPath, commandLine.GameArgs, settings.PauseBeforeLaunch, LogWarn, LogError, LogSuccess);
             return;
         }
 
@@ -181,6 +217,9 @@ public static class LoaderApp
         IReadOnlyList<string> securityBlockedMods = modLoadResult.SecurityBlockedMods;
         bool hasErrored = modLoadResult.HasErrored;
 
+        phases.Measure("update mod hash history", () => ModHashHistory.ApplyAndSave(logsDirectory, loadPlan.Statuses, LogWarn));
+        phases.Measure("update security hash history", () => ModSecurityHashHistory.ApplyAndSave(logsDirectory, loadPlan.Statuses, securityAllowlist, LogWarn));
+        phases.Measure("update mod failure history", () => ModFailureTracker.UpdateAndAutoDisable(config, settings, loadPlan.Statuses, LogInfo, LogWarn));
         phases.Measure("write mod status reports", () => ModStatusWriter.WriteAll(logsDirectory, LoaderConstants.LoaderVersion, loadOptions.StrictMode, loadPlan.Statuses));
         phases.Measure("write conflict report", () => changeTracker.WriteReport(conflictReportPath));
         IReadOnlyList<string> modConflicts = changeTracker.BuildMenuSummaries();
@@ -193,11 +232,18 @@ public static class LoaderApp
             LogSuccess($"No mod conflicts detected. Report: {conflictReportPath}");
         }
 
-        InGameMenuInstaller menuInstaller = new(new GmlAssetLoader(loclmDirectory), LogInfo, LogWarn, LogSuccess);
-        bool menuInstalled = phases.Measure("install in-game menu", () => menuInstaller.Install(data, modsDirectory, loadedMods, failedMods, securityBlockedMods, modConflicts));
-        if (!menuInstalled)
+        if (settings.DisableInGameMenu)
         {
-            LogWarn("LOCLM will continue without the in-game menu. Mods can still load and the generated cache can still launch.");
+            LogWarn("In-game LOCLM menu disabled by config or --disable-menu.");
+        }
+        else
+        {
+            InGameMenuInstaller menuInstaller = new(new GmlAssetLoader(loclmDirectory), LogInfo, LogWarn, LogSuccess);
+            bool menuInstalled = phases.Measure("install in-game menu", () => menuInstaller.Install(data, modsDirectory, loadedMods, failedMods, securityBlockedMods, modConflicts));
+            if (!menuInstalled)
+            {
+                LogWarn("LOCLM will continue without the in-game menu. Mods can still load and the generated cache can still launch.");
+            }
         }
 
         if(hasErrored){
@@ -220,11 +266,27 @@ Continue? (type y and press Enter)
 
         LogStep("Creating output stream");
         LogStep($"Writing modified data.win to \"{outputDataWinPath}\"...");
-        phases.Measure("write patched data.win", () => gamePatcher.WriteDataWin(outputDataWinPath, data));
+        LoaderResult writeCheck = gamePatcher.CheckWritable(outputDataWinPath, new FileInfo(originalDataWinPath).Length * 2);
+        if (!writeCheck.Success)
+        {
+            LogError(writeCheck.Error?.Message ?? "Cache write check failed.");
+            LatestRunReport.Write(logsDirectory, "cache_write_check_failed", config, settings, commandLine, loadPlan.Statuses, WarningSummary, ErrorSummary, LogWarn);
+            FinishPerformance(logsDirectory, phases, hashCache, "cache_write_check_failed");
+            return;
+        }
+        LoaderResult writeResult = phases.Measure("write patched data.win", () => gamePatcher.WriteDataWinAtomic(outputDataWinPath, data));
+        if (!writeResult.Success)
+        {
+            LogError(writeResult.Error?.Message ?? "Atomic cache write failed.");
+            LatestRunReport.Write(logsDirectory, "cache_write_failed", config, settings, commandLine, loadPlan.Statuses, WarningSummary, ErrorSummary, LogWarn);
+            FinishPerformance(logsDirectory, phases, hashCache, "cache_write_failed");
+            return;
+        }
         LoaderResult cacheValidation = phases.Measure("validate patched cache", () => gamePatcher.ValidateWrittenDataWin(outputDataWinPath));
         if (!cacheValidation.Success)
         {
             LogError(cacheValidation.Error?.Message ?? "Generated cache validation failed.");
+            LatestRunReport.Write(logsDirectory, "cache_validation_failed", config, settings, commandLine, loadPlan.Statuses, WarningSummary, ErrorSummary, LogWarn);
             FinishPerformance(logsDirectory, phases, hashCache, "cache_validation_failed");
             return;
         }
@@ -232,13 +294,15 @@ Continue? (type y and press Enter)
         if (!hasErrored)
         {
             phases.Measure("write cache manifest", () => CacheManager.WriteCacheManifest(cacheManifestPath, cacheFingerprint, LogInfo));
+            CacheManager.SaveLastKnownGood(config, LogInfo, LogWarn);
         }
         LogSuccess("Done.");
         WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, gameCompatibility, hasErrored);
+        LatestRunReport.Write(logsDirectory, hasErrored ? "patched_with_errors" : "patched", config, settings, commandLine, loadPlan.Statuses, WarningSummary, ErrorSummary, LogWarn);
         FinishPerformance(logsDirectory, phases, hashCache, hasErrored ? "patched_with_errors" : "patched");
         LogStep("Launching game");
         LogInfo("Executable: " + gameExecutable);
-        GameLauncher.Launch(gameExecutable, outputDataWinPath, args, LogWarn, LogError, LogSuccess);
+        GameLauncher.Launch(gameExecutable, outputDataWinPath, commandLine.GameArgs, settings.PauseBeforeLaunch, LogWarn, LogError, LogSuccess);
     }
 
     private static string[] LoadOptionalList(string path) =>
@@ -253,7 +317,7 @@ Continue? (type y and press Enter)
     {
         hashCache?.Save(LogWarn);
         phases.WriteReport(logsDirectory, mode, LogInfo, LogWarn);
-        ReportMaintenance.CompressOldReports(logsDirectory, TimeSpan.FromDays(14), LogInfo, LogWarn);
+        ReportMaintenance.CompressOldReports(logsDirectory, TimeSpan.FromDays(LogRetentionDays), LogInfo, LogWarn);
     }
 
     private static void WriteRunSummary(

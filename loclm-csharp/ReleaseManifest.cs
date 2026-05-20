@@ -9,6 +9,8 @@ public sealed class ReleaseManifest
         "loclm/loclm-csharp.exe",
         "loclm/loclm-csharp.dll",
         "loclm/loclm-csharp.runtimeconfig.json",
+        "loclm/config.json",
+        "loclm/config/steam_mp.json",
         "loclm/UndertaleModLib.dll",
         "loclm/supported_game_builds.json",
         "loclm/assets/gml/runtime_logger.gml"

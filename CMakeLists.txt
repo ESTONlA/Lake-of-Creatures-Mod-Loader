@@ -7,6 +7,9 @@ cmake_minimum_required (VERSION 3.27)
 project ("loclm")
 include(FetchContent)
 
+option(LOCLM_ENABLE_STEAMWORKS "Enable Steam relay multiplayer bridge" OFF)
+set(STEAMWORKS_SDK_DIR "" CACHE PATH "Path to the Steamworks SDK root")
+
 FetchContent_Declare(
     undertalemodtool
     GIT_REPOSITORY https://github.com/krzys-h/UndertaleModTool.git

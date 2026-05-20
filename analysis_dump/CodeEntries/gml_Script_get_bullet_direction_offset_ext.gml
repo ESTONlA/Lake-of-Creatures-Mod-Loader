@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_get_bullet_direction_offset_ext", decompile that instead.

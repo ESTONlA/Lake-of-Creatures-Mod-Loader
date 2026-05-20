@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_replace_prop_with_area_specific", decompile that instead.

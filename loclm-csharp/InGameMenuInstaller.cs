@@ -33,6 +33,9 @@ public sealed class InGameMenuInstaller
 
         bool alreadyInjected = data.GameObjects.ByName("obj_loclm_button") is not null;
         UndertaleGameObject loclmButton = EnsureClonedMenuButton(data, buttonMenu);
+        UndertaleGameObject mpController = EnsurePlainObject(data, "obj_lm_mp_controller", persistent: true, visible: false);
+        UndertaleGameObject remotePlayer = EnsurePlainObject(data, "obj_lm_remote_player", persistent: false, visible: true);
+        UndertaleGameObject remoteEntity = EnsurePlainObject(data, "obj_lm_remote_entity", persistent: false, visible: true);
         if (alreadyInjected)
         {
             info("Existing obj_loclm_button found; reusing already-injected LOCLM menu object.");
@@ -55,6 +58,8 @@ public sealed class InGameMenuInstaller
             importGroup.QueueReplace(
                 "gml_GlobalScript_loclm_runtime_log",
                 gmlAssets.Load("runtime_logger.gml"));
+
+            QueueMultiplayerScripts(importGroup);
 
             importGroup.QueueFindReplace(
                 "gml_GlobalScript_main_menu_spawn_buttons",
@@ -94,6 +99,34 @@ public sealed class InGameMenuInstaller
                 "gml_Object_obj_ctrl_main_menu_Step_0",
                 gmlAssets.Load("main_menu_step.gml"));
 
+            importGroup.QueueReplace(
+                mpController.EventHandlerFor(EventType.Create, data),
+                gmlAssets.Load("mp_controller_create.gml"));
+
+            importGroup.QueueReplace(
+                mpController.EventHandlerFor(EventType.Step, EventSubtypeStep.Step, data),
+                gmlAssets.Load("mp_controller_step.gml"));
+
+            importGroup.QueueReplace(
+                mpController.EventHandlerFor(EventType.Other, 68u, data),
+                gmlAssets.Load("mp_controller_async_networking.gml"));
+
+            importGroup.QueueReplace(
+                remotePlayer.EventHandlerFor(EventType.Create, data),
+                gmlAssets.Load("mp_remote_player_create.gml"));
+
+            importGroup.QueueReplace(
+                remotePlayer.EventHandlerFor(EventType.Draw, EventSubtypeDraw.Draw, data),
+                gmlAssets.Load("mp_remote_player_draw.gml"));
+
+            importGroup.QueueReplace(
+                remoteEntity.EventHandlerFor(EventType.Create, data),
+                gmlAssets.Load("mp_remote_entity_create.gml"));
+
+            importGroup.QueueReplace(
+                remoteEntity.EventHandlerFor(EventType.Draw, EventSubtypeDraw.Draw, data),
+                gmlAssets.Load("mp_remote_entity_draw.gml"));
+
             importGroup.Import();
             success("Installed LOCLM about button clone and info panel.");
             return true;
@@ -103,6 +136,33 @@ public sealed class InGameMenuInstaller
             warn("LOCLM in-game menu could not be installed: " + ex.Message);
             warn("This usually means the game updated and a menu injection target changed.");
             return false;
+        }
+    }
+
+    private void QueueMultiplayerScripts(UndertaleModLib.Compiler.CodeImportGroup importGroup)
+    {
+        string[] scripts =
+        {
+            "scr_lm_mp_init",
+            "scr_lm_mp_host_steam",
+            "scr_lm_mp_join_steam_lobby",
+            "scr_lm_mp_tick",
+            "scr_lm_mp_send_player_state",
+            "scr_lm_mp_handle_local_packet",
+            "scr_lm_mp_spawn_remote_player",
+            "scr_lm_mp_update_remote_player",
+            "scr_lm_mp_send_world_state",
+            "scr_lm_mp_update_world_state",
+            "scr_lm_mp_open_lobby_panel",
+            "scr_lm_mp_start_match",
+            "scr_lm_mp_send_packet",
+            "scr_lm_mp_read_bridge_port",
+            "scr_lm_mp_read_string_payload"
+        };
+
+        foreach (string script in scripts)
+        {
+            importGroup.QueueReplace("gml_GlobalScript_" + script, gmlAssets.Load(script + ".gml"));
         }
     }
 
@@ -180,5 +240,28 @@ public sealed class InGameMenuInstaller
 
         data.GameObjects.Add(loclmButton);
         return loclmButton;
+    }
+
+    private static UndertaleGameObject EnsurePlainObject(UndertaleData data, string name, bool persistent, bool visible)
+    {
+        if (data.GameObjects.ByName(name) is UndertaleGameObject existing)
+        {
+            existing.Persistent = persistent;
+            existing.Visible = visible;
+            existing.Solid = false;
+            return existing;
+        }
+
+        UndertaleGameObject obj = new()
+        {
+            Name = data.Strings.MakeString(name),
+            Visible = visible,
+            Persistent = persistent,
+            Solid = false,
+            Depth = -100000
+        };
+
+        data.GameObjects.Add(obj);
+        return obj;
     }
 }

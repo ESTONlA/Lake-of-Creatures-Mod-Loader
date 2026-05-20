@@ -1,0 +1,1 @@
+// This code entry is a reference to an anonymous function within "gml_GlobalScript_birgit_get_wand_bar_image_index", decompile that instead.

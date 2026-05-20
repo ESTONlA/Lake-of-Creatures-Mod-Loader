@@ -63,7 +63,11 @@ public sealed class ModLoader
         if (loadPlan.Mods.Count > 0)
         {
             step($"Security scanning {loadPlan.Mods.Count} mod(s) in parallel");
-            securityResults = SecurityScanner.ScanMods(loadPlan.Mods, modsDirectory, securityAllowlist, hashCache);
+            securityResults = SecurityScanner.ScanMods(loadPlan.Mods, modsDirectory, securityAllowlist, hashCache, new SecurityScanOptions
+            {
+                WarnOnlyDeveloperMode = options.SecurityWarnOnlyDeveloperMode,
+                MaxScanBytes = options.SecurityScanSizeLimitBytes
+            });
         }
 
         List<string> loadedMods = new();
@@ -138,19 +142,38 @@ public sealed class ModLoader
         Stopwatch loadStopwatch = Stopwatch.StartNew();
         SecurityScanResult securityScan = securityResults.TryGetValue(mod.folderName, out SecurityScanResult? preparedSecurityScan)
             ? preparedSecurityScan
-            : SecurityScanner.ScanMod(modPath, dllPath, securityAllowlist);
+            : SecurityScanner.ScanMod(modPath, dllPath, securityAllowlist, options: new SecurityScanOptions
+            {
+                WarnOnlyDeveloperMode = options.SecurityWarnOnlyDeveloperMode,
+                MaxScanBytes = options.SecurityScanSizeLimitBytes
+            });
         modStatus.Security = new SecurityStatus
         {
             Hash = securityScan.ModHash,
-            Result = securityScan.IsBlocked ? "blocked" : securityScan.IsAllowedByAllowlist ? "allowlisted" : "clean",
+            Result = securityScan.IsBlocked ? "blocked" : securityScan.IsAllowedByAllowlist ? "allowlisted" : securityScan.WarnOnlyDeveloperMode && securityScan.Findings.Count > 0 ? "warn_only" : "clean",
+            HighestSeverity = securityScan.HighestSeverity,
             Summary = securityScan.Summary,
+            ScanDurationMs = securityScan.ScanDurationMs,
+            TotalBytesScanned = securityScan.TotalBytesScanned,
+            WarnOnlyDeveloperMode = securityScan.WarnOnlyDeveloperMode,
             Findings = securityScan.Findings.ToList(),
-            SkippedLargeFiles = securityScan.SkippedLargeFiles.ToList()
+            SkippedLargeFiles = securityScan.SkippedLargeFiles.ToList(),
+            SuspiciousFiles = securityScan.SuspiciousFiles.ToList(),
+            NativeDlls = securityScan.NativeDlls.ToList(),
+            NetworkStrings = securityScan.NetworkStrings.ToList()
         };
         info($"\"{modDisplayName}\" Hash \"{securityScan.ModHash}\"");
+        info($"Security scan for \"{modDisplayName}\" took {securityScan.ScanDurationMs} ms, scanned {securityScan.TotalBytesScanned} bytes, highest severity: {securityScan.HighestSeverity}.");
         if (securityScan.SkippedLargeFiles.Count > 0)
         {
             string warning = $"Security scan skipped {securityScan.SkippedLargeFiles.Count} large file(s) in \"{modDisplayName}\".";
+            warn(warning);
+            modStatus.Warnings.Add(warning);
+        }
+
+        if (securityScan.WarnOnlyDeveloperMode && securityScan.Findings.Count > 0)
+        {
+            string warning = $"Security warn-only developer mode is enabled. \"{modDisplayName}\" has security findings but will not be blocked.";
             warn(warning);
             modStatus.Warnings.Add(warning);
         }
@@ -179,12 +202,14 @@ public sealed class ModLoader
         info("DLL: " + dllPath);
         try
         {
-            InvokeModLoad(data, dllPath);
+            ModInvokeTiming timing = InvokeModLoad(data, dllPath);
             ResourceSnapshot afterModSnapshot = ResourceSnapshot.Capture(data);
             ResourceDelta delta = changeTracker.LogChanges(modDisplayName, beforeModSnapshot, afterModSnapshot, data, info, warn);
             loadStopwatch.Stop();
             modStatus.State = "loaded";
             modStatus.LoadDurationMs = loadStopwatch.ElapsedMilliseconds;
+            modStatus.DllLoadDurationMs = timing.DllLoadDurationMs;
+            modStatus.PatchDurationMs = timing.PatchDurationMs;
             modStatus.ChangedResources = delta.Describe().ToList();
             if (loadStopwatch.Elapsed > options.SlowLoadWarningThreshold)
             {
@@ -208,9 +233,11 @@ public sealed class ModLoader
         }
     }
 
-    private static void InvokeModLoad(UndertaleData data, string dllPath)
+    private static ModInvokeTiming InvokeModLoad(UndertaleData data, string dllPath)
     {
+        Stopwatch dllLoad = Stopwatch.StartNew();
         Assembly assembly = Assembly.LoadFrom(dllPath);
+        dllLoad.Stop();
         Type[] types = assembly.GetTypes();
         if (types.Length == 0)
         {
@@ -240,7 +267,10 @@ public sealed class ModLoader
             throw new InvalidOperationException("Could not create mod entry point instance.");
         }
 
+        Stopwatch patch = Stopwatch.StartNew();
         loadMethod.Invoke(instance, new object[] { 0, data });
+        patch.Stop();
+        return new ModInvokeTiming(dllLoad.ElapsedMilliseconds, patch.ElapsedMilliseconds);
     }
 
     private void HandleLoadException(
@@ -313,3 +343,5 @@ public sealed record ModLoadExecutionResult(
     IReadOnlyList<string> FailedMods,
     IReadOnlyList<string> SecurityBlockedMods,
     bool HasErrored);
+
+public sealed record ModInvokeTiming(long DllLoadDurationMs, long PatchDurationMs);

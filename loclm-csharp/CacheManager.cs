@@ -35,6 +35,76 @@ public static class CacheManager
         info($"Wrote cache manifest: {cacheManifestPath}");
     }
 
+    public static void SaveLastKnownGood(LoaderConfig config, Action<string> info, Action<string> warn)
+    {
+        try
+        {
+            if (File.Exists(config.OutputDataWinPath))
+            {
+                File.Copy(config.OutputDataWinPath, config.LastKnownGoodDataWinPath, overwrite: true);
+            }
+            if (File.Exists(config.CacheManifestPath))
+            {
+                File.Copy(config.CacheManifestPath, config.LastKnownGoodManifestPath, overwrite: true);
+            }
+            info("Updated last-known-good LOCLM cache backup.");
+        }
+        catch (Exception ex)
+        {
+            warn("Could not update last-known-good cache backup: " + ex.Message);
+        }
+    }
+
+    public static LoaderResult RollbackLastKnownGood(LoaderConfig config)
+    {
+        if (!File.Exists(config.LastKnownGoodDataWinPath))
+        {
+            return LoaderResult.Fail("missing_last_known_good_cache", "No last-known-good cache backup exists yet.");
+        }
+
+        try
+        {
+            File.Copy(config.LastKnownGoodDataWinPath, config.OutputDataWinPath, overwrite: true);
+            if (File.Exists(config.LastKnownGoodManifestPath))
+            {
+                File.Copy(config.LastKnownGoodManifestPath, config.CacheManifestPath, overwrite: true);
+            }
+
+            return LoaderResult.Ok();
+        }
+        catch (Exception ex)
+        {
+            return LoaderResult.Fail("rollback_cache_failed", "Could not roll back LOCLM cache: " + ex.Message, ex);
+        }
+    }
+
+    public static void ClearCache(LoaderConfig config, Action<string> info, Action<string> warn)
+    {
+        string[] paths =
+        {
+            config.OutputDataWinPath,
+            config.CacheManifestPath,
+            config.LastKnownGoodDataWinPath,
+            config.LastKnownGoodManifestPath
+        };
+
+        foreach (string path in paths)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    info("Deleted cache file: " + path);
+                }
+            }
+            catch (Exception ex)
+            {
+                warn("Could not delete cache file '" + path + "': " + ex.Message);
+            }
+        }
+    }
+
     public static string BuildCacheFingerprint(
         string originalDataWinPath,
         string gameExecutable,

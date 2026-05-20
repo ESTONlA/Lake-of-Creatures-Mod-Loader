@@ -123,6 +123,35 @@ public sealed class ResourceChangeTracker
         };
 
         File.WriteAllText(path, JsonSerializer.Serialize(report, JsonUtil.IndentedOptions));
+        WriteTextReport(Path.ChangeExtension(path, ".txt"), report);
+    }
+
+    private static void WriteTextReport(string path, ConflictReport report)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine("LOCLM Mod Conflicts");
+        builder.AppendLine("===================");
+        builder.AppendLine("Generated UTC: " + report.generatedUtc);
+        builder.AppendLine("Conflict count: " + report.conflictCount);
+        builder.AppendLine();
+        if (report.conflicts.Count == 0)
+        {
+            builder.AppendLine("No conflicts detected.");
+        }
+        else
+        {
+            foreach (ModConflict conflict in report.conflicts)
+            {
+                builder.AppendLine($"[{conflict.Severity}] {conflict.Resource}");
+                builder.AppendLine("  Mods: " + conflict.FirstMod + " / " + conflict.SecondMod);
+                builder.AppendLine("  Message: " + conflict.Message);
+                builder.AppendLine("  Suggested fix: " + conflict.SuggestedFix);
+                builder.AppendLine("  Note: " + conflict.HarmlessNote);
+                builder.AppendLine();
+            }
+        }
+
+        File.WriteAllText(path, builder.ToString());
     }
 
     private void TrackNamedUsage(
