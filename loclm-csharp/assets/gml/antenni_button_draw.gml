@@ -1,4 +1,4 @@
-if (variable_global_exists("loclm_menu_open") && global.loclm_menu_open == true && button_index == 91)
+if (variable_global_exists("antenni_menu_open") && global.antenni_menu_open == true && button_index == 91)
 {
     var panel_x = 20;
     var panel_y = 16;
@@ -23,7 +23,7 @@ if (variable_global_exists("loclm_menu_open") && global.loclm_menu_open == true 
     draw_set_valign(fa_top);
 
     draw_set_color(global.color_yellow);
-    draw_text_outline_b2x(text_x, text_y, "LOCLM");
+    draw_text_outline_b2x(text_x, text_y, "Antenni Loader");
     draw_set_color(c_white);
     draw_text(text_x, text_y + 25, "Community-built loader for Lake of Creatures");
     draw_set_color(12632256);
@@ -38,18 +38,18 @@ if (variable_global_exists("loclm_menu_open") && global.loclm_menu_open == true 
     draw_text(right_x, section_y, "Loaded Mods");
     draw_set_color(c_white);
     var loaded_visible = 4;
-    var loaded_count = global.loclm_loaded_mod_count;
+    var loaded_count = global.antenni_loaded_mod_count;
     if (loaded_count <= 0)
     {
         draw_text(right_x + 18, section_y + 22, "None");
     }
     else
     {
-        var loaded_start = global.loclm_loaded_scroll;
+        var loaded_start = global.antenni_loaded_scroll;
         var loaded_end = min(loaded_count, loaded_start + loaded_visible);
         for (var i = loaded_start; i < loaded_end; i += 1)
         {
-            var mod_name = string(global.loclm_loaded_mods[i]);
+            var mod_name = string(global.antenni_loaded_mods[i]);
             if (string_length(mod_name) > 35)
             {
                 mod_name = string_copy(mod_name, 1, 32) + "...";
@@ -68,30 +68,30 @@ if (variable_global_exists("loclm_menu_open") && global.loclm_menu_open == true 
     draw_set_color(global.color_yellow);
     draw_text(right_x, conflict_y, "Possible Conflicts");
     draw_set_color(c_white);
-    if (!variable_global_exists("loclm_mod_conflict_count") || global.loclm_mod_conflict_count <= 0)
+    if (!variable_global_exists("antenni_mod_conflict_count") || global.antenni_mod_conflict_count <= 0)
     {
         draw_text(right_x + 18, conflict_y + 22, "None");
     }
     else
     {
-        var conflict_visible = min(global.loclm_mod_conflict_count, 4);
+        var conflict_visible = min(global.antenni_mod_conflict_count, 4);
         for (var c = 0; c < conflict_visible; c += 1)
         {
-            var conflict_text = string(global.loclm_mod_conflicts[c]);
+            var conflict_text = string(global.antenni_mod_conflicts[c]);
             if (string_length(conflict_text) > 43)
             {
                 conflict_text = string_copy(conflict_text, 1, 40) + "...";
             }
             draw_text(right_x + 18, conflict_y + 22 + (c * 20), "- " + conflict_text);
         }
-        if (global.loclm_mod_conflict_count > conflict_visible)
+        if (global.antenni_mod_conflict_count > conflict_visible)
         {
             draw_set_color(8421504);
-            draw_text(right_x + 18, conflict_y + 106, "+" + string(global.loclm_mod_conflict_count - conflict_visible) + " more in Logs/mod_conflicts.json");
+            draw_text(right_x + 18, conflict_y + 106, "+" + string(global.antenni_mod_conflict_count - conflict_visible) + " more in Logs/mod_conflicts.json");
         }
     }
 
-    if (variable_global_exists("loclm_folder_copied_timer") && global.loclm_folder_copied_timer > 0)
+    if (variable_global_exists("antenni_folder_copied_timer") && global.antenni_folder_copied_timer > 0)
     {
         draw_set_color(global.color_yellow);
         draw_text(panel_x + panel_w - 138, panel_y + panel_h - 24, "Path copied.");

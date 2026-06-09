@@ -21,7 +21,7 @@ public static class LoaderApp
     private static void LogBanner()
     {
         WriteColored("==================================================", ConsoleColor.DarkCyan);
-        WriteColored(" LOCLM - Lake of Creatures Loader", ConsoleColor.Cyan);
+        WriteColored(" Antenni Loader - GameMaker Mod Loader", ConsoleColor.Cyan);
         WriteColored("==================================================", ConsoleColor.DarkCyan);
     }
 
@@ -48,7 +48,7 @@ public static class LoaderApp
         {
             string benchmarkLogsDirectory = Path.Combine(AppContext.BaseDirectory, "Logs");
             Directory.CreateDirectory(benchmarkLogsDirectory);
-            LoaderLogger.Initialize(Path.Combine(benchmarkLogsDirectory, "LOCLM.log"), LoaderConstants.LoaderVersion);
+            LoaderLogger.Initialize(Path.Combine(benchmarkLogsDirectory, "ANTENNI.log"), LoaderConstants.LoaderVersion);
             LogBanner();
             LogInfo("Benchmark mode enabled. No game files will be patched or launched.");
             BenchmarkMode.Run(AppContext.BaseDirectory, phases, LogInfo, LogWarn, LogSuccess);
@@ -68,7 +68,7 @@ public static class LoaderApp
         LoaderConfig config = configResult.Value;
         string originalDataWinPath = config.OriginalDataWinPath;
         string gameExecutable = config.GameExecutable;
-        string loclmDirectory = config.LoclmDirectory;
+        string loaderDirectory = config.LoaderDirectory;
         string outputDataWinPath = config.OutputDataWinPath;
         string modsDirectory = config.ModsDirectory;
         string logsDirectory = config.LogsDirectory;
@@ -83,6 +83,7 @@ public static class LoaderApp
         Directory.CreateDirectory(logsDirectory);
         LoaderLogger.Initialize(loaderLogPath, LoaderConstants.LoaderVersion);
         LogBanner();
+        LogInfo($"Game profile: {config.GameProfile.DisplayName}");
         LogInfo($"Game executable: {gameExecutable}");
         LogInfo($"Source data.win: {originalDataWinPath}");
         LogInfo($"Output cache: {outputDataWinPath}");
@@ -109,18 +110,21 @@ public static class LoaderApp
         phases.Measure("startup diagnostics", () => StartupDiagnostics.Run(
             originalDataWinPath,
             gameExecutable,
-            loclmDirectory,
+            loaderDirectory,
             logsDirectory,
             modsDirectory,
+            config.GameProfile,
             LoaderConstants.LoaderVersion,
             LogInfo,
             LogWarn));
 
-        GameCompatibilityInfo gameCompatibility = phases.Measure("game compatibility hashes", () => GameCompatibilityInfo.Create(originalDataWinPath, gameExecutable, hashCache));
+        GameCompatibilityInfo gameCompatibility = phases.Measure(
+            "game compatibility hashes",
+            () => GameCompatibilityInfo.Create(originalDataWinPath, gameExecutable, config.GameProfile, hashCache));
         SecurityAllowlist securityAllowlist = phases.Measure("security allowlist load", () => SecurityAllowlist.Load(securityAllowlistPath, LogWarn));
 
-        string[] blacklisted = LoadOptionalList(Path.Combine(loclmDirectory, "blacklist.txt"));
-        string[] whitelisted = LoadOptionalList(Path.Combine(loclmDirectory, "whitelist.txt"));
+        string[] blacklisted = LoadOptionalList(Path.Combine(loaderDirectory, "blacklist.txt"));
+        string[] whitelisted = LoadOptionalList(Path.Combine(loaderDirectory, "whitelist.txt"));
         ModLoadPlan loadPlan = phases.Measure("mod discovery and load order", () => ModLoadPlanner.Build(
             modsDirectory,
             disabledModsDirectory,
@@ -133,11 +137,11 @@ public static class LoaderApp
             LogError,
             hashCache));
 
-        string cacheFingerprint = phases.Measure("cache fingerprint", () => CacheManager.BuildCacheFingerprint(originalDataWinPath, gameExecutable, loclmDirectory, modsDirectory, hashCache));
+        string cacheFingerprint = phases.Measure("cache fingerprint", () => CacheManager.BuildCacheFingerprint(originalDataWinPath, gameExecutable, loaderDirectory, modsDirectory, config.GameProfile, hashCache));
         if (phases.Measure("cache validation", () => CacheManager.IsCacheValid(outputDataWinPath, cacheManifestPath, cacheFingerprint, LogWarn)))
         {
             LogSuccess("Cache is up to date. Skipping regeneration.");
-            WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, gameCompatibility, false);
+            WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, config.GameProfile, gameCompatibility, false);
             FinishPerformance(logsDirectory, phases, hashCache, "cache_reused");
             LogStep("Launching game");
             LogInfo("Executable: " + gameExecutable);
@@ -155,7 +159,15 @@ public static class LoaderApp
             LogError("Exception while reading data.win:");
             LogPlain(message);
         }));
-        phases.Measure("future proofing report", () => FutureProofing.Run(data, gameCompatibility, logsDirectory, loclmDirectory, LoaderConstants.LoaderVersion, LogInfo, LogWarn));
+        phases.Measure("future proofing report", () => FutureProofing.Run(
+            data,
+            gameCompatibility,
+            logsDirectory,
+            loaderDirectory,
+            config.GameProfile,
+            LoaderConstants.LoaderVersion,
+            LogInfo,
+            LogWarn));
 
         LogStep("Scanning mods directory");
         LogInfo(modsDirectory);
@@ -193,11 +205,18 @@ public static class LoaderApp
             LogSuccess($"No mod conflicts detected. Report: {conflictReportPath}");
         }
 
-        InGameMenuInstaller menuInstaller = new(new GmlAssetLoader(loclmDirectory), LogInfo, LogWarn, LogSuccess);
-        bool menuInstalled = phases.Measure("install in-game menu", () => menuInstaller.Install(data, modsDirectory, loadedMods, failedMods, securityBlockedMods, modConflicts));
-        if (!menuInstalled)
+        if (config.GameProfile.SupportsInGameMenu)
         {
-            LogWarn("LOCLM will continue without the in-game menu. Mods can still load and the generated cache can still launch.");
+            InGameMenuInstaller menuInstaller = new(new GmlAssetLoader(loaderDirectory), LogInfo, LogWarn, LogSuccess);
+            bool menuInstalled = phases.Measure("install in-game menu", () => menuInstaller.Install(data, modsDirectory, loadedMods, failedMods, securityBlockedMods, modConflicts));
+            if (!menuInstalled)
+            {
+                LogWarn("Antenni Loader will continue without the in-game menu. Mods can still load and the generated cache can still launch.");
+            }
+        }
+        else
+        {
+            LogInfo($"The in-game Antenni menu is not enabled for {config.GameProfile.DisplayName}; mod loading and cache patching remain available.");
         }
 
         if(hasErrored){
@@ -231,10 +250,10 @@ Continue? (type y and press Enter)
 
         if (!hasErrored)
         {
-            phases.Measure("write cache manifest", () => CacheManager.WriteCacheManifest(cacheManifestPath, cacheFingerprint, LogInfo));
+            phases.Measure("write cache manifest", () => CacheManager.WriteCacheManifest(cacheManifestPath, cacheFingerprint, config.GameProfile, LogInfo));
         }
         LogSuccess("Done.");
-        WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, gameCompatibility, hasErrored);
+        WriteRunSummary(logsDirectory, originalDataWinPath, gameExecutable, outputDataWinPath, cacheManifestPath, config.GameProfile, gameCompatibility, hasErrored);
         FinishPerformance(logsDirectory, phases, hashCache, hasErrored ? "patched_with_errors" : "patched");
         LogStep("Launching game");
         LogInfo("Executable: " + gameExecutable);
@@ -262,16 +281,18 @@ Continue? (type y and press Enter)
         string gameExecutable,
         string outputDataWinPath,
         string cacheManifestPath,
+        GameProfile gameProfile,
         GameCompatibilityInfo gameCompatibility,
         bool hadPatchError)
     {
         Directory.CreateDirectory(logsDirectory);
-        string summaryPath = Path.Combine(logsDirectory, "LOCLM_summary.txt");
+        string summaryPath = Path.Combine(logsDirectory, "ANTENNI_summary.txt");
         StringBuilder builder = new();
-        builder.AppendLine("LOCLM troubleshooting summary");
-        builder.AppendLine("============================");
+        builder.AppendLine("Antenni Loader troubleshooting summary");
+        builder.AppendLine("=======================================");
         builder.AppendLine("Created UTC: " + DateTime.UtcNow.ToString("O"));
         builder.AppendLine("Loader version: " + LoaderConstants.LoaderVersion);
+        builder.AppendLine("Game profile: " + gameProfile.DisplayName);
         builder.AppendLine("Menu injection version: " + LoaderConstants.MenuInjectionVersion);
         builder.AppendLine("OS version: " + Environment.OSVersion);
         builder.AppendLine(".NET version: " + Environment.Version);
@@ -296,7 +317,7 @@ Continue? (type y and press Enter)
         File.WriteAllText(summaryPath, builder.ToString());
 
         LogPlain("");
-        WriteColored("LOCLM final summary", ConsoleColor.Cyan);
+        WriteColored("Antenni Loader final summary", ConsoleColor.Cyan);
         LogInfo($"Support logs folder: {logsDirectory}");
         LogInfo($"Summary file: {summaryPath}");
         LogInfo($"Warnings this run: {WarningSummary.Count}");
@@ -344,12 +365,12 @@ Continue? (type y and press Enter)
         string combined = string.Join("\n", ErrorSummary.Concat(WarningSummary));
         if (combined.Contains("data.win", StringComparison.OrdinalIgnoreCase))
         {
-            steps.Add("Verify the game files in Steam, then delete LOCLM_CACHE_data.win and launch again.");
+            steps.Add("Verify the game files in Steam, then delete ANTENNI_CACHE_data.win and launch again.");
         }
         if (combined.Contains("version.dll", StringComparison.OrdinalIgnoreCase) ||
             combined.Contains("proxy", StringComparison.OrdinalIgnoreCase))
         {
-            steps.Add("Make sure version.dll is in the same folder as LakeOfCreatures.exe.");
+            steps.Add("Make sure version.dll is beside the supported game's executable.");
         }
         if (combined.Contains("Missing DLL", StringComparison.OrdinalIgnoreCase) ||
             combined.Contains("dependency", StringComparison.OrdinalIgnoreCase))
@@ -374,16 +395,16 @@ Continue? (type y and press Enter)
             combined.Contains("menu injection target changed", StringComparison.OrdinalIgnoreCase))
         {
             steps.Add("Open Logs/game_compatibility_report.json and confirm whether the game updated.");
-            steps.Add("If the LOCLM menu is missing but mods loaded, update supported_game_builds.json or wait for a loader compatibility update.");
+            steps.Add("If the Antenni menu is missing in Lake of Creatures but mods loaded, update supported_game_builds.json or wait for a loader compatibility update.");
         }
         if (steps.Count == 0)
         {
-            steps.Add("Zip the whole loclm/Logs folder and share it with the mod/loader developer.");
-            steps.Add("If the game does not open at all, check loclm/Logs/LOCLM_proxy.log first.");
+            steps.Add("Zip the whole antenni/Logs folder and share it with the mod/loader developer.");
+            steps.Add("If the game does not open at all, check antenni/Logs/ANTENNI_proxy.log first.");
         }
         else
         {
-            steps.Add("Zip the whole loclm/Logs folder if you need support.");
+            steps.Add("Zip the whole antenni/Logs folder if you need support.");
         }
 
         return steps;

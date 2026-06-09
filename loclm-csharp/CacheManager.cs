@@ -22,12 +22,17 @@ public static class CacheManager
         }
     }
 
-    public static void WriteCacheManifest(string cacheManifestPath, string cacheFingerprint, Action<string> info)
+    public static void WriteCacheManifest(
+        string cacheManifestPath,
+        string cacheFingerprint,
+        GameProfile gameProfile,
+        Action<string> info)
     {
         CacheManifest manifest = new()
         {
             loaderVersion = LoaderConstants.LoaderVersion,
-            injectionVersion = LoaderConstants.MenuInjectionVersion,
+            gameId = gameProfile.Id,
+            injectionVersion = gameProfile.SupportsInGameMenu ? LoaderConstants.MenuInjectionVersion : "disabled",
             fingerprint = cacheFingerprint,
             createdUtc = DateTime.UtcNow.ToString("O")
         };
@@ -38,26 +43,31 @@ public static class CacheManager
     public static string BuildCacheFingerprint(
         string originalDataWinPath,
         string gameExecutable,
-        string loclmDirectory,
+        string loaderDirectory,
         string modsDirectory,
+        GameProfile gameProfile,
         FileHashCache? hashCache = null)
     {
         StringBuilder builder = new();
-        builder.AppendLine("loclm-cache-v1");
+        builder.AppendLine("antenni-cache-v1");
+        builder.AppendLine("game-profile=" + gameProfile.Id);
         builder.AppendLine("loader-version=" + LoaderConstants.LoaderVersion);
-        builder.AppendLine("menu-injection-version=" + LoaderConstants.MenuInjectionVersion);
+        builder.AppendLine("menu-injection-version=" + (gameProfile.SupportsInGameMenu ? LoaderConstants.MenuInjectionVersion : "disabled"));
         builder.AppendLine("logs=excluded");
 
         AppendFileMetadata(builder, "data.win", originalDataWinPath);
         AppendFileHash(builder, "game-executable", gameExecutable, hashCache);
         AppendFileHash(builder, "loader-exe", Environment.ProcessPath ?? "", hashCache);
-        AppendFileHash(builder, "loader-dll", Path.Combine(loclmDirectory, "loclm-csharp.dll"), hashCache);
+        AppendFileHash(builder, "loader-dll", Path.Combine(loaderDirectory, "antenni-loader.dll"), hashCache);
         AppendFileHash(builder, "proxy-dll", Path.Combine(Path.GetDirectoryName(originalDataWinPath) ?? "", "version.dll"), hashCache);
-        AppendFileHash(builder, "blacklist", Path.Combine(loclmDirectory, "blacklist.txt"), hashCache);
-        AppendFileHash(builder, "whitelist", Path.Combine(loclmDirectory, "whitelist.txt"), hashCache);
-        AppendFileHash(builder, "security-allowlist", Path.Combine(loclmDirectory, "security_allowlist.json"), hashCache);
-        AppendFileHash(builder, "supported-game-builds", Path.Combine(loclmDirectory, "supported_game_builds.json"), hashCache);
-        AppendDirectoryFingerprint(builder, "gml-assets", Path.Combine(loclmDirectory, "assets", "gml"), hashCache);
+        AppendFileHash(builder, "blacklist", Path.Combine(loaderDirectory, "blacklist.txt"), hashCache);
+        AppendFileHash(builder, "whitelist", Path.Combine(loaderDirectory, "whitelist.txt"), hashCache);
+        AppendFileHash(builder, "security-allowlist", Path.Combine(loaderDirectory, "security_allowlist.json"), hashCache);
+        AppendFileHash(builder, "supported-game-builds", Path.Combine(loaderDirectory, "supported_game_builds.json"), hashCache);
+        if (gameProfile.SupportsInGameMenu)
+        {
+            AppendDirectoryFingerprint(builder, "gml-assets", Path.Combine(loaderDirectory, "assets", "gml"), hashCache);
+        }
         AppendDirectoryFingerprint(builder, "mods", modsDirectory, hashCache);
 
         return HashUtil.ComputeStringSha256(builder.ToString());

@@ -1,5 +1,5 @@
 event_inherited();
-my_text = "LOCLM";
+my_text = "Antenni";
 fadeout_dir = 1;
 if (button_index == 91)
 {

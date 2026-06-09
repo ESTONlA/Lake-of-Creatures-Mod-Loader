@@ -6,11 +6,11 @@ public sealed class ReleaseManifest
     public List<string> RequiredFiles { get; set; } = new()
     {
         "version.dll",
-        "loclm/loclm-csharp.exe",
-        "loclm/loclm-csharp.dll",
-        "loclm/loclm-csharp.runtimeconfig.json",
-        "loclm/UndertaleModLib.dll",
-        "loclm/supported_game_builds.json",
-        "loclm/assets/gml/runtime_logger.gml"
+        "antenni/antenni-loader.exe",
+        "antenni/antenni-loader.dll",
+        "antenni/antenni-loader.runtimeconfig.json",
+        "antenni/UndertaleModLib.dll",
+        "antenni/supported_game_builds.json",
+        "antenni/assets/gml/runtime_logger.gml"
     };
 }

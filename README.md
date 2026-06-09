@@ -1,73 +1,101 @@
-# LOCLM
+# Antenni Loader 1.0.0
 
-LOCLM is the Lake of Creatures mod loader. It injects through `version.dll`, rewrites the game's `data.win` with loaded mods, and then relaunches the game against the generated `LOCLM_CACHE_data.win`.
+Antenni Loader is a community GameMaker mod loader for:
 
-## Links
+- Lake of Creatures
+- Ogre Chambers 2222
 
-- Steam store page: https://store.steampowered.com/app/1808320/Lake_of_Creatures/
-- Steam community page: https://steamcommunity.com/app/1808320
-- Discord: https://discord.com/invite/kQdXU3r2Dn
-- Wiki for creating mods: https://estonla.github.io/LOCLm-modding-wiki/index.html
+Version `1.0.0` is the first stable Antenni Loader release.
 
+It injects through `version.dll`, loads C# mods, patches the selected game's `data.win`, and launches the game with a generated `ANTENNI_CACHE_data.win`. The original `data.win` is not replaced.
 
-## Repository Layout
+## Requirements
+
+- Windows 10 or Windows 11, x64
+- .NET 10 Desktop Runtime x64
+- A supported Steam game installation
+
+## Installation
+
+Copy these items from `out/bin/` into the supported game's folder:
 
 ```text
-.
-+-- loclm-cxx/        Native proxy DLL loader (`version.dll`)
-+-- loclm-csharp/     C# mod loading and `data.win` patching logic
-+-- mod_template/     `dotnet new loclm` template for creating mods
-\-- docs/             Astro/Starlight documentation site
+version.dll
+antenni/
 ```
+
+The result must look like:
+
+```text
+Game Folder/
+├─ version.dll
+├─ data.win
+├─ LakeOfCreatures.exe
+│  or ogre chambers 2.exe
+└─ antenni/
+   ├─ antenni-loader.exe
+   ├─ antenni-loader.dll
+   ├─ mods/
+   └─ Logs/
+```
+
+Launch the game normally through Steam.
+
+## Installing Mods
+
+Each mod needs its own folder:
+
+```text
+antenni/mods/ExampleMod/
+├─ ExampleMod.dll
+└─ modinfo.json
+```
+
+Mods should declare their supported game:
+
+```json
+{
+  "modName": "Example Mod",
+  "authors": ["Example Author"],
+  "description": "Example Antenni mod.",
+  "priority": 100,
+  "supportedGames": ["lake-of-creatures"]
+}
+```
+
+Valid game IDs:
+
+- `lake-of-creatures`
+- `ogre-chambers-2222`
+- `*` for a genuinely game-independent mod
+
+Legacy manifests without `supportedGames` remain compatible with Lake of Creatures. Antenni skips them on Ogre Chambers 2222 to prevent Lake-specific patches from corrupting Ogre.
+
+## Game-Specific Behavior
+
+Lake of Creatures currently supports the in-game Antenni menu.
+
+Ogre Chambers 2222 supports proxy startup, mod loading, security scanning, conflict reporting, cache generation, and launching. Its in-game Antenni menu is intentionally disabled until a safe Ogre-specific UI integration is implemented.
 
 ## Build
 
-The top-level CMake project fetches UndertaleModTool and builds both loader components.
-
 ```powershell
-cmake -S . -B build
-cmake --build build
+dotnet build loclm-csharp\loclm-csharp.csproj -c Release
+cmake -S . -B build\x64 -A x64
+cmake --build build\x64 --config Release --target antenni-proxy
 ```
 
-Build output is written to `out/bin/`.
-
-Expected runtime layout:
+Build output is written to:
 
 ```text
-out/bin/
-+-- version.dll
-\-- loclm/
-    +-- loclm-csharp.exe
-    +-- loclm-csharp.dll
-    +-- mods/
-    \-- runtimes/
+out/bin/version.dll
+out/bin/antenni/
 ```
 
-To install the loader into a game folder, copy `out/bin/version.dll` and the `out/bin/loclm/` directory next to the game's executable and `data.win`.
+The source directories retain their historical `loclm-csharp` and `loclm-cxx` names to avoid breaking repository history and existing project references. Runtime branding and installation use Antenni Loader.
 
-Important: the current game build is `x64`, so `version.dll` must also be the `x64` build.
+## Credits
 
-## Mod Template
+Antenni Loader was originally developed as LOCLM for Lake of Creatures and is based on or inspired by GS2ML by OmegaMetor:
 
-The mod template lives in [`mod_template`](mod_template). To install it locally:
-
-```powershell
-dotnet new install .\mod_template
-```
-
-Then create a new mod with:
-
-```powershell
-dotnet new loclm
-```
-
-For the easy-mode template:
-
-```powershell
-dotnet new loclm -e
-```
-
-LOCLM is based on / inspired by GS2ML by OmegaMetor:
 https://github.com/OmegaMetor/GS2ML
-
-GS2ML is licensed under GPL-3.0, and this project keeps the same GPL-3.0 license.

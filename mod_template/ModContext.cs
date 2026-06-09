@@ -346,7 +346,7 @@ internal sealed class ModContext
     {
         string normalized = RequireIncludedFile(relativeAssetPath);
         string modFolderName = Path.GetFileName(ModRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        return $"loclm/mods/{modFolderName}/assets/{normalized}";
+        return $"antenni/mods/{modFolderName}/assets/{normalized}";
     }
 
     public string ReplaceTextOnce(string source, string search, string replacement, string label = "text")

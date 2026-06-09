@@ -9,8 +9,12 @@ public sealed class ModLoadOptions
 
     public static ModLoadOptions FromEnvironment()
     {
-        string mode = Environment.GetEnvironmentVariable("LOCLM_MOD_FAILURE_MODE") ?? "";
-        string strict = Environment.GetEnvironmentVariable("LOCLM_STRICT_MOD_LOADING") ?? "";
+        string mode = Environment.GetEnvironmentVariable("ANTENNI_MOD_FAILURE_MODE")
+            ?? Environment.GetEnvironmentVariable("LOCLM_MOD_FAILURE_MODE")
+            ?? "";
+        string strict = Environment.GetEnvironmentVariable("ANTENNI_STRICT_MOD_LOADING")
+            ?? Environment.GetEnvironmentVariable("LOCLM_STRICT_MOD_LOADING")
+            ?? "";
         return new ModLoadOptions
         {
             StrictMode = mode.Equals("strict", StringComparison.OrdinalIgnoreCase) ||
@@ -22,12 +26,18 @@ public sealed class ModLoadOptions
 
 public sealed class GameCompatibilityInfo
 {
+    public string GameId { get; init; } = "";
     public string DataWinSha256 { get; init; } = "";
     public string GameExecutableSha256 { get; init; } = "";
 
-    public static GameCompatibilityInfo Create(string dataWinPath, string gameExecutablePath, FileHashCache? hashCache = null) =>
+    public static GameCompatibilityInfo Create(
+        string dataWinPath,
+        string gameExecutablePath,
+        GameProfile? gameProfile = null,
+        FileHashCache? hashCache = null) =>
         new()
         {
+            GameId = gameProfile?.Id ?? GameProfile.Detect(gameExecutablePath)?.Id ?? "",
             DataWinSha256 = ComputeFileHash(dataWinPath, hashCache),
             GameExecutableSha256 = ComputeFileHash(gameExecutablePath, hashCache)
         };
@@ -175,13 +185,28 @@ public static class ModLoadPlanner
         if (!string.IsNullOrWhiteSpace(mod.minLoaderVersion) &&
             VersionRules.Compare(loaderVersion, mod.minLoaderVersion) < 0)
         {
-            return $"Requires LOCLM >= {mod.minLoaderVersion}. Current: {loaderVersion}.";
+            return $"Requires Antenni Loader >= {mod.minLoaderVersion}. Current: {loaderVersion}.";
         }
 
         if (!string.IsNullOrWhiteSpace(mod.maxLoaderVersion) &&
             VersionRules.Compare(loaderVersion, mod.maxLoaderVersion) > 0)
         {
-            return $"Requires LOCLM <= {mod.maxLoaderVersion}. Current: {loaderVersion}.";
+            return $"Requires Antenni Loader <= {mod.maxLoaderVersion}. Current: {loaderVersion}.";
+        }
+
+        if (mod.supportedGames.Length == 0 &&
+            gameCompatibility.GameId.Equals(GameProfile.OgreChambers2222.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Legacy manifest does not list Ogre Chambers 2222. Add supportedGames: [\"ogre-chambers-2222\"] or [\"*\"].";
+        }
+
+        if (mod.supportedGames.Length > 0 &&
+            !mod.supportedGames.Any(game =>
+                game.Equals("*", StringComparison.OrdinalIgnoreCase) ||
+                game.Equals("any", StringComparison.OrdinalIgnoreCase) ||
+                game.Equals(gameCompatibility.GameId, StringComparison.OrdinalIgnoreCase)))
+        {
+            return $"Mod does not support game profile '{gameCompatibility.GameId}'.";
         }
 
         if (mod.supportedGameVersions.Length > 0 &&
@@ -377,7 +402,7 @@ public static class ModLoadPlanner
         {
             if (status.DllArchitecture is "x86" or "native-unknown")
             {
-                string message = $"Invalid or risky DLL architecture for \"{status.ModName}\": {status.DllArchitecture}. LOCLM is x64.";
+                string message = $"Invalid or risky DLL architecture for \"{status.ModName}\": {status.DllArchitecture}. Antenni Loader is x64.";
                 warn(message);
                 status.Warnings.Add(message);
             }
@@ -386,7 +411,7 @@ public static class ModLoadPlanner
                 !status.TargetFramework.Contains("net10.0", StringComparison.OrdinalIgnoreCase) &&
                 !status.TargetFramework.Contains(".NETCoreApp,Version=v10.0", StringComparison.OrdinalIgnoreCase))
             {
-                string message = $"\"{status.ModName}\" appears built for {status.TargetFramework}; LOCLM runs on .NET 10.";
+                string message = $"\"{status.ModName}\" appears built for {status.TargetFramework}; Antenni Loader runs on .NET 10.";
                 warn(message);
                 status.Warnings.Add(message);
             }

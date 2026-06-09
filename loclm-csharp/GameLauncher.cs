@@ -10,14 +10,15 @@ public static class GameLauncher
         Action<string> error,
         Action<string> success)
     {
-        if (string.Equals(Environment.GetEnvironmentVariable("LOCLM_SKIP_LAUNCH"), "1", StringComparison.Ordinal))
+        if (string.Equals(Environment.GetEnvironmentVariable("ANTENNI_SKIP_LAUNCH"), "1", StringComparison.Ordinal) ||
+            string.Equals(Environment.GetEnvironmentVariable("LOCLM_SKIP_LAUNCH"), "1", StringComparison.Ordinal))
         {
-            warn("LOCLM_SKIP_LAUNCH=1 is set. Not launching the game.");
+            warn("ANTENNI_SKIP_LAUNCH=1 is set. Not launching the game.");
             return;
         }
 
         ConsoleTheme.WriteColored("", ConsoleColor.White);
-        ConsoleTheme.WriteColored("LOCLM is ready to relaunch the game.", ConsoleColor.Yellow);
+        ConsoleTheme.WriteColored("Antenni Loader is ready to relaunch the game.", ConsoleColor.Yellow);
         ConsoleTheme.WriteColored("Type 'y' and press Enter to continue. This window will stay open until then.", ConsoleColor.Yellow);
         WaitForYes(warn);
 

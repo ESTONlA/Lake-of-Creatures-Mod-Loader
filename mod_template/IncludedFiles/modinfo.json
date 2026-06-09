@@ -1,6 +1,7 @@
 {
 	"modName":"Test Mod - Estonia",
 	"authors":["Unknown Modder"],
-	"description":"A LOCLM sample mod that adds a custom main menu tab.",
+	"description":"An Antenni Loader sample mod that adds a custom main menu tab.",
+	"supportedGames":["lake-of-creatures"],
 	"priority":100
 }

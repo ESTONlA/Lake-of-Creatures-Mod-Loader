@@ -9,6 +9,7 @@ public class ModInfo
     public bool enabled { get; set; } = true;
     public string minLoaderVersion { get; set; } = "";
     public string maxLoaderVersion { get; set; } = "";
+    public string[] supportedGames { get; set; } = Array.Empty<string>();
     public string[] supportedGameVersions { get; set; } = Array.Empty<string>();
     public string[] testedOn { get; set; } = Array.Empty<string>();
     public string[] dependencies { get; set; } = Array.Empty<string>();
@@ -26,6 +27,7 @@ public sealed record ModManifestResult(ModInfo? ModInfo, string? Error)
 public class CacheManifest
 {
     public string loaderVersion { get; set; } = "";
+    public string gameId { get; set; } = "";
     public string injectionVersion { get; set; } = "";
     public string fingerprint { get; set; } = "";
     public string createdUtc { get; set; } = "";

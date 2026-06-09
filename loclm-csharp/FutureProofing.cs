@@ -5,7 +5,7 @@ using UndertaleModLib.Models;
 
 public static class FutureProofing
 {
-    private const string ResourceMapVersion = "loclm-resource-map-v1";
+    private const string ResourceMapVersion = "antenni-resource-map-v1";
 
     private static readonly string[] RequiredMenuResources =
     {
@@ -27,7 +27,8 @@ public static class FutureProofing
         UndertaleData data,
         GameCompatibilityInfo gameCompatibility,
         string logsDirectory,
-        string loclmDirectory,
+        string loaderDirectory,
+        GameProfile gameProfile,
         string loaderVersion,
         Action<string> info,
         Action<string> warn)
@@ -35,9 +36,14 @@ public static class FutureProofing
         Directory.CreateDirectory(logsDirectory);
         string baselinePath = Path.Combine(logsDirectory, "game_resource_baseline.json");
         string reportPath = Path.Combine(logsDirectory, "game_compatibility_report.json");
-        ResourceMap current = ResourceMap.Capture(data, gameCompatibility, loaderVersion);
+        ResourceMap current = ResourceMap.Capture(data, gameCompatibility, gameProfile, loaderVersion);
         ResourceMap? previous = LoadResourceMap(baselinePath, warn);
-        SupportedGameBuildList supportedBuilds = SupportedGameBuildList.Load(Path.Combine(loclmDirectory, "supported_game_builds.json"), warn);
+        if (previous is not null &&
+            !string.Equals(previous.GameId, gameProfile.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            previous = null;
+        }
+        SupportedGameBuildList supportedBuilds = SupportedGameBuildList.Load(Path.Combine(loaderDirectory, "supported_game_builds.json"), warn);
         BuildCompatibility buildCompatibility = supportedBuilds.Match(gameCompatibility);
 
         FutureProofingReport report = new()
@@ -50,8 +56,8 @@ public static class FutureProofing
             GameBuildName = buildCompatibility.Name,
             SupportedBuildListPath = supportedBuilds.SourcePath,
             PreviousBaselineDataWinSha256 = previous?.DataWinSha256 ?? "",
-            RequiredResources = CheckRequiredResources(current),
-            ChangedMenuTargets = CompareMenuTargets(previous, current)
+            RequiredResources = gameProfile.SupportsInGameMenu ? CheckRequiredResources(current) : new List<ResourceCheck>(),
+            ChangedMenuTargets = gameProfile.SupportsInGameMenu ? CompareMenuTargets(previous, current) : new List<ChangedMenuTarget>()
         };
 
         if (!buildCompatibility.IsKnown)
@@ -69,7 +75,7 @@ public static class FutureProofing
 
         foreach (ResourceCheck check in report.RequiredResources.Where(check => !check.Exists))
         {
-            string message = $"Required game resource is missing after update: {check.Name}. LOCLM menu injection or mods may break.";
+            string message = $"Required game resource is missing after update: {check.Name}. Antenni menu injection or mods may break.";
             report.Warnings.Add(message);
             warn(message);
         }
@@ -77,7 +83,7 @@ public static class FutureProofing
         foreach (ChangedMenuTarget changed in report.ChangedMenuTargets)
         {
             string message = changed.IsInjectionTarget
-                ? $"LOCLM menu injection target changed since previous baseline: {changed.Name}."
+                ? $"Antenni menu injection target changed since previous baseline: {changed.Name}."
                 : $"Required menu script changed since previous baseline: {changed.Name}.";
             report.Warnings.Add(message);
             warn(message);
@@ -189,16 +195,22 @@ public sealed class ResourceMap
     public string ResourceMapVersion { get; set; } = "";
     public string CapturedUtc { get; set; } = "";
     public string LoaderVersion { get; set; } = "";
+    public string GameId { get; set; } = "";
     public string DataWinSha256 { get; set; } = "";
     public string GameExecutableSha256 { get; set; } = "";
     public Dictionary<string, List<ResourceMapEntry>> Resources { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
-    public static ResourceMap Capture(UndertaleData data, GameCompatibilityInfo compatibility, string loaderVersion) =>
+    public static ResourceMap Capture(
+        UndertaleData data,
+        GameCompatibilityInfo compatibility,
+        GameProfile gameProfile,
+        string loaderVersion) =>
         new()
         {
-            ResourceMapVersion = "loclm-resource-map-v1",
+            ResourceMapVersion = "antenni-resource-map-v1",
             CapturedUtc = DateTime.UtcNow.ToString("O"),
             LoaderVersion = loaderVersion,
+            GameId = gameProfile.Id,
             DataWinSha256 = compatibility.DataWinSha256,
             GameExecutableSha256 = compatibility.GameExecutableSha256,
             Resources = new Dictionary<string, List<ResourceMapEntry>>(StringComparer.OrdinalIgnoreCase)

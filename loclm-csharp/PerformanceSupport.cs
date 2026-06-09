@@ -222,8 +222,8 @@ public static class ReportMaintenance
 {
     private static readonly HashSet<string> CurrentRunFiles = new(StringComparer.OrdinalIgnoreCase)
     {
-        "LOCLM.log",
-        "LOCLM_summary.txt",
+        "ANTENNI.log",
+        "ANTENNI_summary.txt",
         "performance_report.json",
         "file_hash_cache.json",
         "game_baseline.json",
@@ -247,7 +247,7 @@ public static class ReportMaintenance
                 CurrentRunFiles.Contains(file.Name) ||
                 file.Extension.Equals(".gz", StringComparison.OrdinalIgnoreCase) ||
                 file.Length == 0 ||
-                file.Name.StartsWith("LOCLM_CACHE_", StringComparison.OrdinalIgnoreCase))
+                file.Name.StartsWith("ANTENNI_CACHE_", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -283,11 +283,11 @@ public static class ReportMaintenance
 
 public static class BenchmarkMode
 {
-    public static void Run(string loclmDirectory, LoaderPhaseTimer phases, Action<string> info, Action<string> warn, Action<string> success)
+    public static void Run(string loaderDirectory, LoaderPhaseTimer phases, Action<string> info, Action<string> warn, Action<string> success)
     {
-        string logsDirectory = System.IO.Path.Combine(loclmDirectory, "Logs");
+        string logsDirectory = System.IO.Path.Combine(loaderDirectory, "Logs");
         Directory.CreateDirectory(logsDirectory);
-        string tempRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "loclm-benchmark-" + Guid.NewGuid().ToString("N"));
+        string tempRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "antenni-benchmark-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempRoot);
 
         try
@@ -351,7 +351,7 @@ public static class BenchmarkMode
                 JsonSerializer.Serialize(new
                 {
                     modName = folderName,
-                    authors = new[] { "LOCLM Benchmark" },
+                    authors = new[] { "Antenni Benchmark" },
                     description = "Synthetic benchmark mod.",
                     priority = i
                 }));

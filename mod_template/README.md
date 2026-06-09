@@ -1,10 +1,10 @@
 # Test Mod - Estonia
 
-This template ships with a working sample that adds a main-menu button and opens a custom tab called `Test Mod - Estonia`.
+This Antenni Loader template ships with a working Lake of Creatures sample that adds a main-menu button and opens a custom tab called `Test Mod - Estonia`.
 
 ## Files That Matter
 
-- `loclmMod.cs`: main entry point with `InstallMainMenuTab`
+- `AntenniMod.cs`: main entry point with `InstallMainMenuTab`
 - `ModContext.cs`: asset loading, logging, and hook helpers
 - `ModConfig.cs`: optional JSON config model
 - `IncludedFiles/modinfo.json`: manifest copied beside your built DLL
@@ -76,3 +76,15 @@ Notes:
 - Sound helpers currently support embedded `.wav` and `.ogg` files in the built-in audio group.
 - Included files are shipped beside your mod under `assets/included/`; they are not injected into GameMaker's empty `DAFL` chunk.
 - Token replacement used by `AppendCodeFromFile(..., replacements)` is strict now. If a token is missing, the build fails instead of silently creating broken GML.
+
+## Targeting A Game
+
+Set `supportedGames` in `IncludedFiles/modinfo.json`:
+
+```json
+{
+  "supportedGames": ["lake-of-creatures"]
+}
+```
+
+Available IDs are `lake-of-creatures` and `ogre-chambers-2222`. Use `*` only when the mod does not rely on game-specific resources.

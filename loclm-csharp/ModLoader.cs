@@ -298,7 +298,7 @@ public sealed class ModLoader
         string markerPath = Path.Combine(quarantineDirectory, safeName + ".blocked.txt");
         File.WriteAllText(
             markerPath,
-            "LOCLM blocked this mod during security scanning." + Environment.NewLine +
+            "Antenni Loader blocked this mod during security scanning." + Environment.NewLine +
             "Mod: " + modDisplayName + Environment.NewLine +
             "Path: " + modPath + Environment.NewLine +
             "Hash: " + modHash + Environment.NewLine +

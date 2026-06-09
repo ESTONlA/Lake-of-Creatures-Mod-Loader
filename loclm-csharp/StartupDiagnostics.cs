@@ -26,58 +26,60 @@ public static class StartupDiagnostics
     public static void Run(
         string originalDataWinPath,
         string gameExecutable,
-        string loclmDirectory,
+        string loaderDirectory,
         string logsDirectory,
         string modsDirectory,
+        GameProfile gameProfile,
         string loaderVersion,
         Action<string> info,
         Action<string> warn)
     {
-        WarnForInstallLayout(originalDataWinPath, gameExecutable, loclmDirectory, warn);
-        WarnForGameUpdate(originalDataWinPath, gameExecutable, logsDirectory, loaderVersion, info, warn);
+        WarnForInstallLayout(originalDataWinPath, gameExecutable, loaderDirectory, gameProfile, warn);
+        WarnForGameUpdate(originalDataWinPath, gameExecutable, logsDirectory, gameProfile, loaderVersion, info, warn);
         WarnForDuplicateModDlls(modsDirectory, warn);
-        WarnForMissingModDependencies(modsDirectory, loclmDirectory, warn);
+        WarnForMissingModDependencies(modsDirectory, loaderDirectory, warn);
         WarnForBlockedFiles(modsDirectory, warn);
     }
 
     private static void WarnForInstallLayout(
         string originalDataWinPath,
         string gameExecutable,
-        string loclmDirectory,
+        string loaderDirectory,
+        GameProfile gameProfile,
         Action<string> warn)
     {
         string gameDirectory = Path.GetFullPath(Path.GetDirectoryName(gameExecutable) ?? "");
         string dataDirectory = Path.GetFullPath(Path.GetDirectoryName(originalDataWinPath) ?? "");
-        string loclmFullPath = Path.GetFullPath(loclmDirectory)
+        string loaderFullPath = Path.GetFullPath(loaderDirectory)
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
         if (!string.Equals(gameDirectory, dataDirectory, StringComparison.OrdinalIgnoreCase))
         {
-            warn($"LOCLM launch paths look wrong. Game EXE folder is '{gameDirectory}', but data.win folder is '{dataDirectory}'.");
+            warn($"Antenni Loader launch paths look wrong. Game EXE folder is '{gameDirectory}', but data.win folder is '{dataDirectory}'.");
         }
 
-        if (!string.Equals(Path.GetFileName(loclmFullPath), "loclm", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(Path.GetFileName(loaderFullPath), LoaderConstants.InstallDirectoryName, StringComparison.OrdinalIgnoreCase))
         {
-            warn($"LOCLM appears to be installed in the wrong folder. Expected a folder named 'loclm', got '{loclmFullPath}'.");
+            warn($"Antenni Loader appears to be installed in the wrong folder. Expected a folder named '{LoaderConstants.InstallDirectoryName}', got '{loaderFullPath}'.");
         }
 
-        string expectedLoclmParent = Path.GetFullPath(Path.Combine(gameDirectory, "loclm"))
+        string expectedLoaderDirectory = Path.GetFullPath(Path.Combine(gameDirectory, LoaderConstants.InstallDirectoryName))
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (!string.Equals(loclmFullPath, expectedLoclmParent, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(loaderFullPath, expectedLoaderDirectory, StringComparison.OrdinalIgnoreCase))
         {
-            warn($"LOCLM folder is not inside the game folder. Expected '{expectedLoclmParent}', got '{loclmFullPath}'.");
+            warn($"Antenni Loader folder is not inside the game folder. Expected '{expectedLoaderDirectory}', got '{loaderFullPath}'.");
         }
 
         string proxyPath = Path.Combine(gameDirectory, "version.dll");
         if (!File.Exists(proxyPath))
         {
-            warn($"version.dll is not next to LakeOfCreatures.exe. Expected: {proxyPath}");
+            warn($"version.dll is not next to {gameProfile.ExecutableName}. Expected: {proxyPath}");
         }
 
         string executableName = Path.GetFileName(gameExecutable);
-        if (!string.Equals(executableName, "LakeOfCreatures.exe", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(executableName, gameProfile.ExecutableName, StringComparison.OrdinalIgnoreCase))
         {
-            warn($"Steam or the proxy launched an unexpected executable: {executableName}. Expected LakeOfCreatures.exe.");
+            warn($"Steam or the proxy launched an unexpected executable: {executableName}. Expected {gameProfile.ExecutableName}.");
         }
     }
 
@@ -85,6 +87,7 @@ public static class StartupDiagnostics
         string originalDataWinPath,
         string gameExecutable,
         string logsDirectory,
+        GameProfile gameProfile,
         string loaderVersion,
         Action<string> info,
         Action<string> warn)
@@ -92,6 +95,7 @@ public static class StartupDiagnostics
         string baselinePath = Path.Combine(logsDirectory, "game_baseline.json");
         GameBaseline current = new()
         {
+            gameId = gameProfile.Id,
             loaderVersion = loaderVersion,
             dataWinPath = originalDataWinPath,
             dataWinLength = new FileInfo(originalDataWinPath).Length,
@@ -108,11 +112,12 @@ public static class StartupDiagnostics
             {
                 GameBaseline? previous = JsonSerializer.Deserialize<GameBaseline>(File.ReadAllText(baselinePath), JsonUtil.CaseInsensitiveOptions);
                 if (previous is not null &&
+                    string.Equals(previous.gameId, current.gameId, StringComparison.OrdinalIgnoreCase) &&
                     (!string.Equals(previous.dataWinSha256, current.dataWinSha256, StringComparison.OrdinalIgnoreCase) ||
                      !string.Equals(previous.gameExecutableSha256, current.gameExecutableSha256, StringComparison.OrdinalIgnoreCase)))
                 {
-                    warn("Lake of Creatures appears to have updated since the last LOCLM run. Mods may break until they are updated.");
-                    warn("LOCLM will regenerate the cache automatically, but mod compatibility is not guaranteed after game updates.");
+                    warn($"{gameProfile.DisplayName} appears to have updated since the last Antenni Loader run. Mods may break until they are updated.");
+                    warn("Antenni Loader will regenerate the cache automatically, but mod compatibility is not guaranteed after game updates.");
                 }
             }
             else
@@ -309,6 +314,7 @@ public static class StartupDiagnostics
 
 public sealed class GameBaseline
 {
+    public string gameId { get; set; } = "";
     public string loaderVersion { get; set; } = "";
     public string dataWinPath { get; set; } = "";
     public long dataWinLength { get; set; }

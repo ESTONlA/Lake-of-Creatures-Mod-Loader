@@ -8,17 +8,17 @@ set( CMAKE_VERBOSE_MAKEFILE on )
 add_definitions(-DUNICODE)
 message("${CMAKE_CURRENT_SOURCE_DIR}")
 
-add_library(loclm-cxx SHARED "src/dllmain.cpp" "res/version.def")
+add_library(antenni-proxy SHARED "src/dllmain.cpp" "res/version.def")
 
-target_include_directories(loclm-cxx PRIVATE "include/")
+target_include_directories(antenni-proxy PRIVATE "include/")
 
-set_target_properties(loclm-cxx PROPERTIES
+set_target_properties(antenni-proxy PROPERTIES
 	OUTPUT_NAME "version"
 	MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 )
 
-add_custom_command(TARGET loclm-cxx POST_BUILD
+add_custom_command(TARGET antenni-proxy POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${Output_Bin_Dir}
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${Output_Bin_Dir}/loclm/mods"
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:loclm-cxx> "${Output_Bin_Dir}/version.dll"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${Output_Bin_Dir}/antenni/mods"
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:antenni-proxy> "${Output_Bin_Dir}/version.dll"
 )

@@ -1,7 +1,10 @@
 public static class LoaderConstants
 {
-    public const string LoaderVersion = "0.7.0-beta";
-    public const string MenuInjectionVersion = "loclm-menu-v2";
-    public const string CacheManifestFileName = "LOCLM_CACHE_manifest.json";
-    public const string CacheDataWinFileName = "LOCLM_CACHE_data.win";
+    public const string LoaderVersion = "1.0.0";
+    public const string ProductName = "Antenni Loader";
+    public const string InstallDirectoryName = "antenni";
+    public const string ManagedExecutableName = "antenni-loader.exe";
+    public const string MenuInjectionVersion = "antenni-menu-v1";
+    public const string CacheManifestFileName = "ANTENNI_CACHE_manifest.json";
+    public const string CacheDataWinFileName = "ANTENNI_CACHE_data.win";
 }

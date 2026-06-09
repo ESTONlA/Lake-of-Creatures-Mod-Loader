@@ -41,6 +41,7 @@ public static class ModMetadataValidator
             .ToArray() ?? Array.Empty<string>();
         info.minLoaderVersion = info.minLoaderVersion?.Trim() ?? "";
         info.maxLoaderVersion = info.maxLoaderVersion?.Trim() ?? "";
+        info.supportedGames = CleanStringArray(info.supportedGames);
         info.supportedGameVersions = CleanStringArray(info.supportedGameVersions);
         info.testedOn = CleanStringArray(info.testedOn);
         info.dependencies = CleanStringArray(info.dependencies);

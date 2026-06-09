@@ -2,9 +2,9 @@ public sealed class GmlAssetLoader
 {
     private readonly string assetDirectory;
 
-    public GmlAssetLoader(string loclmDirectory)
+    public GmlAssetLoader(string loaderDirectory)
     {
-        assetDirectory = Path.Combine(loclmDirectory, "assets", "gml");
+        assetDirectory = Path.Combine(loaderDirectory, "assets", "gml");
     }
 
     public string Load(string fileName, params (string Token, string Value)[] replacements)
@@ -12,7 +12,7 @@ public sealed class GmlAssetLoader
         string path = Path.Combine(assetDirectory, fileName);
         if (!File.Exists(path))
         {
-            throw new FileNotFoundException("Missing LOCLM GML asset.", path);
+            throw new FileNotFoundException("Missing Antenni Loader GML asset.", path);
         }
 
         string code = File.ReadAllText(path);

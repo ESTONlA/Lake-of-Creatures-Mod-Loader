@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>loclm-csharp.Tests</AssemblyName>
+    <AssemblyName>antenni-loader.Tests</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

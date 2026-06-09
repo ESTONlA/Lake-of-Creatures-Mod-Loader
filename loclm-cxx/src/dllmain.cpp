@@ -6,10 +6,10 @@
 #include <vector>
 
 constexpr wchar_t PROXY_DLL[] = L"version.dll";
-constexpr wchar_t LOADER_EXE[] = L"loclm-csharp.exe";
-constexpr wchar_t LOCLM_DIR[] = L"loclm";
+constexpr wchar_t LOADER_EXE[] = L"antenni-loader.exe";
+constexpr wchar_t LOADER_DIR[] = L"antenni";
 constexpr wchar_t LOGS_DIR[] = L"Logs";
-constexpr wchar_t LOG_FILE[] = L"LOCLM_proxy.log";
+constexpr wchar_t LOG_FILE[] = L"ANTENNI_proxy.log";
 
 #define DLL_PROXY_ORIGINAL(name) original_##name
 
@@ -113,9 +113,9 @@ void logLine(const std::wstring& message)
 {
     std::wstring processPath = getProcessPath();
     std::wstring processDir = getDirectory(processPath);
-    std::wstring loclmDir = joinPath(processDir, LOCLM_DIR);
-    std::wstring logsDir = joinPath(loclmDir, LOGS_DIR);
-    ensureDirectory(loclmDir);
+    std::wstring loaderDir = joinPath(processDir, LOADER_DIR);
+    std::wstring logsDir = joinPath(loaderDir, LOGS_DIR);
+    ensureDirectory(loaderDir);
     ensureDirectory(logsDir);
     std::wstring logPath = joinPath(logsDir, LOG_FILE);
 
@@ -130,7 +130,7 @@ void logLine(const std::wstring& message)
 
     if (file == INVALID_HANDLE_VALUE)
     {
-        OutputDebugStringW((L"LOCLM proxy log failed: " + message + L"\n").c_str());
+        OutputDebugStringW((L"Antenni Loader proxy log failed: " + message + L"\n").c_str());
         return;
     }
 
@@ -234,7 +234,7 @@ bool loadProxy()
 
 void showLaunchFailure(const std::wstring& message)
 {
-    MessageBoxW(nullptr, message.c_str(), L"LOCLM proxy launch failed", MB_OK | MB_ICONERROR);
+    MessageBoxW(nullptr, message.c_str(), L"Antenni Loader proxy launch failed", MB_OK | MB_ICONERROR);
 }
 
 void launchLoader()
@@ -250,11 +250,11 @@ void launchLoader()
     std::wstring gamePath = getProcessPath();
     std::wstring gameDir = getDirectory(gamePath);
     std::wstring dataWinPath = joinPath(gameDir, L"data.win");
-    std::wstring loaderPath = joinPath(joinPath(gameDir, L"loclm"), LOADER_EXE);
+    std::wstring loaderPath = joinPath(joinPath(gameDir, LOADER_DIR), LOADER_EXE);
 
     if (GetFileAttributesW(loaderPath.c_str()) == INVALID_FILE_ATTRIBUTES)
     {
-        std::wstring message = L"LOCLM loader executable was not found:\n" + loaderPath;
+        std::wstring message = L"Antenni Loader executable was not found:\n" + loaderPath;
         logLine(L"launchLoader: " + message);
         showLaunchFailure(message);
         return;
@@ -306,7 +306,7 @@ void launchLoader()
     if (!created)
     {
         DWORD error = GetLastError();
-        std::wstring message = L"Could not start LOCLM loader:\n" + loaderPath + L"\n\n" + getLastErrorText(error);
+        std::wstring message = L"Could not start Antenni Loader:\n" + loaderPath + L"\n\n" + getLastErrorText(error);
         logLine(L"launchLoader: CreateProcessW failed: " + getLastErrorText(error));
         showLaunchFailure(message);
         return;
@@ -345,7 +345,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
             processDir +
             L"\n\nLoaded version.dll from:\n" +
             proxyDir +
-            L"\n\nInstall version.dll beside LakeOfCreatures.exe.";
+            L"\n\nInstall version.dll beside the supported game's executable.";
         logLine(L"DllMain: " + message);
         showLaunchFailure(message);
     }
@@ -358,7 +358,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 
     if (hasGameArgument())
     {
-        logLine(L"DllMain: -game detected, not launching LOCLM again");
+        logLine(L"DllMain: -game detected, not launching Antenni Loader again");
         return TRUE;
     }
 

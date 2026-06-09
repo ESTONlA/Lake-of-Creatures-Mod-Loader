@@ -15,7 +15,7 @@ public static class LoaderLogger
         Directory.CreateDirectory(Path.GetDirectoryName(path) ?? AppContext.BaseDirectory);
         WriteRaw("");
         WriteRaw("==================================================");
-        WriteRaw($"LOCLM session started {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        WriteRaw($"Antenni Loader session started {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         WriteRaw($"Loader version: {loaderVersion}");
         WriteRaw($"Machine: {Environment.MachineName}");
         WriteRaw($"OS: {Environment.OSVersion}");

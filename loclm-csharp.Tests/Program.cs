@@ -14,6 +14,10 @@ public static class Program
         Run("security allowlist parses hashes", SecurityAllowlistParsesHashes);
         Run("dependency detection skips missing dependency", DependencyDetectionSkipsMissingDependency);
         Run("install layout detects mismatched game/data folders", InstallLayoutDetectsWrongFolder);
+        Run("game profiles detect both supported games", GameProfilesDetectSupportedGames);
+        Run("game profiles reject unsupported executable", GameProfilesRejectUnsupportedExecutable);
+        Run("Ogre rejects legacy and Lake-only mods", OgreRejectsUnsupportedMods);
+        Run("Ogre accepts explicitly supported mods", OgreAcceptsSupportedMods);
         Run("cache output validation rejects empty file", CacheOutputValidationRejectsEmptyFile);
         Run("zip packaging script validates supported build file", ZipPackagingScriptValidatesSupportedBuildFile);
 
@@ -69,14 +73,14 @@ public static class Program
         using TempDir temp = new();
         string data = WriteFile(temp.Path, "data.win", "data");
         string exe = WriteFile(temp.Path, "LakeOfCreatures.exe", "exe");
-        string loclm = Directory.CreateDirectory(Path.Combine(temp.Path, "loclm")).FullName;
-        string mods = Directory.CreateDirectory(Path.Combine(loclm, "mods")).FullName;
+        string loaderDirectory = Directory.CreateDirectory(Path.Combine(temp.Path, "antenni")).FullName;
+        string mods = Directory.CreateDirectory(Path.Combine(loaderDirectory, "mods")).FullName;
         string mod = Directory.CreateDirectory(Path.Combine(mods, "ModA")).FullName;
         WriteFile(mod, "ModA.dll", "one");
 
-        string first = CacheManager.BuildCacheFingerprint(data, exe, loclm, mods);
+        string first = CacheManager.BuildCacheFingerprint(data, exe, loaderDirectory, mods, GameProfile.LakeOfCreatures);
         WriteFile(mod, "ModA.dll", "two");
-        string second = CacheManager.BuildCacheFingerprint(data, exe, loclm, mods);
+        string second = CacheManager.BuildCacheFingerprint(data, exe, loaderDirectory, mods, GameProfile.LakeOfCreatures);
         AssertNotEqual(first, second, "fingerprint should change when mod file changes");
     }
 
@@ -138,7 +142,7 @@ public static class Program
         string exeFolder = Directory.CreateDirectory(Path.Combine(temp.Path, "exe-folder")).FullName;
         string data = WriteFile(dataFolder, "data.win", "data");
         string exe = WriteFile(exeFolder, "LakeOfCreatures.exe", "exe");
-        LoaderConfig config = LoaderConfig.Create(new[] { data, exe }, Path.Combine(temp.Path, "loclm")).Value!;
+        LoaderConfig config = LoaderConfig.Create(new[] { data, exe }, Path.Combine(temp.Path, "antenni")).Value!;
 
         LoaderResult result = InstallValidator.Validate(config);
         AssertFalse(result.Success, "different data/exe folder should fail");
@@ -148,20 +152,91 @@ public static class Program
     private static void CacheOutputValidationRejectsEmptyFile()
     {
         using TempDir temp = new();
-        string cachePath = WriteFile(temp.Path, "LOCLM_CACHE_data.win", "");
+        string cachePath = WriteFile(temp.Path, "ANTENNI_CACHE_data.win", "");
         LoaderResult result = new GamePatcher().ValidateWrittenDataWin(cachePath);
         AssertFalse(result.Success, "empty generated cache should fail validation");
         AssertEqual("empty_cache_output", result.Error?.Code, "empty cache error code should be stable");
+    }
+
+    private static void GameProfilesDetectSupportedGames()
+    {
+        AssertEqual(
+            GameProfile.LakeOfCreatures.Id,
+            GameProfile.Detect(@"C:\Games\LakeOfCreatures.exe")?.Id,
+            "Lake of Creatures profile should be detected");
+        AssertEqual(
+            GameProfile.OgreChambers2222.Id,
+            GameProfile.Detect(@"C:\Games\ogre chambers 2.exe")?.Id,
+            "Ogre Chambers 2222 profile should be detected");
+    }
+
+    private static void GameProfilesRejectUnsupportedExecutable()
+    {
+        LoaderResult<LoaderConfig> result = LoaderConfig.Create(
+            new[] { @"C:\Games\data.win", @"C:\Games\unknown.exe" },
+            @"C:\Games\antenni");
+        AssertFalse(result.Success, "unknown executables should be rejected");
+        AssertEqual("unsupported_game", result.Error?.Code, "unsupported game code should be stable");
+    }
+
+    private static void OgreRejectsUnsupportedMods()
+    {
+        using TempDir temp = new();
+        string mods = Directory.CreateDirectory(Path.Combine(temp.Path, "mods")).FullName;
+        string disabled = Directory.CreateDirectory(Path.Combine(temp.Path, "disabled_mods")).FullName;
+        CreateMod(mods, "LegacyMod", "Legacy Mod");
+        CreateMod(mods, "LakeMod", "Lake Mod", supportedGames: new[] { GameProfile.LakeOfCreatures.Id });
+
+        ModLoadPlan plan = ModLoadPlanner.Build(
+            mods,
+            disabled,
+            LoaderConstants.LoaderVersion,
+            CreateCompatibility(temp.Path, GameProfile.OgreChambers2222),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            _ => { },
+            _ => { },
+            _ => { });
+
+        AssertEqual(0, plan.Mods.Count, "Ogre should reject mods that do not declare Ogre support");
+        AssertEqual(2, plan.Statuses.Count(status => status.State == "skipped"), "both unsupported mods should be skipped");
+    }
+
+    private static void OgreAcceptsSupportedMods()
+    {
+        using TempDir temp = new();
+        string mods = Directory.CreateDirectory(Path.Combine(temp.Path, "mods")).FullName;
+        string disabled = Directory.CreateDirectory(Path.Combine(temp.Path, "disabled_mods")).FullName;
+        CreateMod(mods, "OgreMod", "Ogre Mod", supportedGames: new[] { GameProfile.OgreChambers2222.Id });
+
+        ModLoadPlan plan = ModLoadPlanner.Build(
+            mods,
+            disabled,
+            LoaderConstants.LoaderVersion,
+            CreateCompatibility(temp.Path, GameProfile.OgreChambers2222),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            _ => { },
+            _ => { },
+            _ => { });
+
+        AssertEqual(1, plan.Mods.Count, "explicitly compatible Ogre mod should be planned");
+        AssertEqual("Ogre Mod", plan.Mods[0].modName, "planned Ogre mod should be preserved");
     }
 
     private static void ZipPackagingScriptValidatesSupportedBuildFile()
     {
         string script = File.ReadAllText(Path.Combine(RepositoryRoot(), "scripts", "build-release.ps1"));
         AssertContains(script, "supported_game_builds.json", "release script should include supported_game_builds.json");
-        AssertContains(script, "loclm/supported_game_builds.json", "zip validation should include supported build list");
+        AssertContains(script, "antenni/supported_game_builds.json", "zip validation should include supported build list");
     }
 
-    private static string CreateMod(string modsRoot, string folderName, string modName, string[]? dependencies = null)
+    private static string CreateMod(
+        string modsRoot,
+        string folderName,
+        string modName,
+        string[]? dependencies = null,
+        string[]? supportedGames = null)
     {
         string mod = Directory.CreateDirectory(Path.Combine(modsRoot, folderName)).FullName;
         WriteFile(mod, folderName + ".dll", "fake dll");
@@ -171,17 +246,19 @@ public static class Program
             authors = new[] { "Tester" },
             description = "Test mod",
             priority = 100,
-            dependencies = dependencies ?? Array.Empty<string>()
+            dependencies = dependencies ?? Array.Empty<string>(),
+            supportedGames = supportedGames ?? Array.Empty<string>()
         });
         WriteFile(mod, "modinfo.json", manifest);
         return mod;
     }
 
-    private static GameCompatibilityInfo CreateCompatibility(string root)
+    private static GameCompatibilityInfo CreateCompatibility(string root, GameProfile? gameProfile = null)
     {
         string data = WriteFile(root, "compat-data.win", "data");
-        string exe = WriteFile(root, "compat.exe", "exe");
-        return GameCompatibilityInfo.Create(data, exe);
+        string exeName = gameProfile?.ExecutableName ?? "compat.exe";
+        string exe = WriteFile(root, exeName, "exe");
+        return GameCompatibilityInfo.Create(data, exe, gameProfile);
     }
 
     private static string WriteFile(string directory, string fileName, string contents)
@@ -247,7 +324,7 @@ public static class Program
     {
         public TempDir()
         {
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "loclm-tests-" + Guid.NewGuid().ToString("N"));
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "antenni-tests-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(Path);
         }
 
